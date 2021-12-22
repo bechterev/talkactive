@@ -1,5 +1,4 @@
-
 export interface ChatMessage {
-    author: string;
-    message: string;
-  }
+  author: string;
+  message: string;
+}
