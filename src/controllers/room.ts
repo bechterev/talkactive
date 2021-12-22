@@ -44,7 +44,6 @@ class RoomController implements IControllerBase {
     });
 
     io.of('/room/create').on('connection', (socket: Socket) => {
-      console.log('socket create');
       socket.emit('welcome', 'Hello creator');
     });
     return res.json({ room: room.id }).status(200);

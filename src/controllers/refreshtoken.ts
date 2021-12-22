@@ -1,11 +1,7 @@
-import path from 'path';
-import * as dotenv from 'dotenv';
 import express, { Response, Request } from 'express';
 import * as jwt from 'jsonwebtoken';
 import IControllerBase from '../interfaces/base';
 import User from '../data/user/schema';
-
-dotenv.config({ path: path.join(__dirname, '../.env') });
 
 class RefreshTokenController implements IControllerBase {
   error_body = { message: 'Email or password are requred' };
@@ -23,7 +19,6 @@ class RefreshTokenController implements IControllerBase {
   static refresh = async (req: Request, res: Response) => {
     const cookie = req.cookies;
     if (!cookie?.jwt) return res.sendStatus(401);
-    console.log(cookie.jwt, 'refresh');
     const refreshToken = cookie.jwt;
     const user = await User.findOne({ token: refreshToken });
     if (!user) return res.sendStatus(403);

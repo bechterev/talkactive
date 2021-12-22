@@ -27,7 +27,7 @@ const app = new App({
     //        loggerMiddleware
     verifyJWT,
   ],
-  dbString: process.env.DB_STRING_LOCAL,
+  dbString: `mongodb://${process.env.DB_USER ? process.env.DB_USER : ''}${process.env.DB_USER ? `:${process.env.DB_PASS}@` : ''}${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`,
 });
 
 app.listen();

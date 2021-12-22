@@ -1,9 +1,5 @@
-import path from 'path';
 import { Request, Response } from 'express';
 import * as jwt from 'jsonwebtoken';
-import * as dotenv from 'dotenv';
-
-dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const verifyJWT = (req: Request & { email: string }, res: Response, next) => {
   if (
@@ -17,12 +13,12 @@ const verifyJWT = (req: Request & { email: string }, res: Response, next) => {
     if (!authHeader) return res.sendStatus(401);
     const token = authHeader.split(' ')[1];
     jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decode) => {
-      console.log(decode, 'verify');
       if (err) return res.sendStatus(403);
       req.email = decode.email;
-      return next();
+      next();
+      return undefined;
     });
   }
-  return next();
+  return undefined;
 };
 export default verifyJWT;

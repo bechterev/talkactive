@@ -1,15 +1,11 @@
-import path from 'path';
 import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
-import * as dotenv from 'dotenv';
 import express, { Response, Request } from 'express';
 import IControllerBase from '../interfaces/base';
 import User from '../data/user/schema';
 
-dotenv.config({ path: path.join(__dirname, '../.env') });
-
 class AuthController implements IControllerBase {
-  error_body = { message: 'Email or password are requred' };
+  static error_body = { message: 'Email or password are requred' };
 
   public router = express.Router();
 
@@ -18,12 +14,12 @@ class AuthController implements IControllerBase {
   }
 
   initRoutes() {
-    this.router.post('/signup', this.up);
-    this.router.post('/signin', this.in);
+    this.router.post('/signup', AuthController.up);
+    this.router.post('/signin', AuthController.in);
     this.router.get('/logout', AuthController.out);
   }
 
-  up = async (req: Request, res: Response) => {
+  static up = async (req: Request, res: Response) => {
     const { login, email, password } = req.body;
 
     if (!email || !password) return res.status(400).json(this.error_body);
@@ -37,12 +33,12 @@ class AuthController implements IControllerBase {
       );
       await User.create({ login, email, password: hashPWD });
     } catch (err) {
-      res.status(500).json({ message: err.message });
+      return res.status(500).json({ message: err.message });
     }
     return res.sendStatus(200);
   };
 
-  in = async (req: Request, res: Response) => {
+  static in = async (req: Request, res: Response) => {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json(this.error_body);
     const user = await User.findOne({ email });
@@ -69,9 +65,8 @@ class AuthController implements IControllerBase {
         httpOnly: true,
         maxAge: 1000 * 60 * 60 * 24,
       });
-      res.status(200).json({ accessToken });
-    } else return res.sendStatus(404);
-    return res.sendStatus(200);
+      return res.status(200).json({ accessToken });
+    } return res.sendStatus(404);
   };
 
   static out = async (req: Request, res: Response) => {
