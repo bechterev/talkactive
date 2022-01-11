@@ -1,5 +1,5 @@
 import { ObjectId } from 'mongoose';
-import CallState from 'src/interfaces/state_call';
+import CallState from '../../interfaces/state_call';
 
 export interface Room extends Document {
   title: string;

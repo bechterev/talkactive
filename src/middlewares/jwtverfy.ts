@@ -3,9 +3,9 @@ import * as jwt from 'jsonwebtoken';
 
 const verifyJWT = (req: Request & { email: string }, res: Response, next) => {
   if (
-    req.path === '/signup'
-    || req.path === '/signin'
-    || req.path === '/refresh'
+    req.path === `${process.env.BASE_PREFIX}signup`
+    || req.path === `${process.env.BASE_PREFIX}signin`
+    || req.path === `${process.env.BASE_PREFIX}refresh`
   ) {
     next();
   } else {

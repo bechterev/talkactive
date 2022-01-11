@@ -14,8 +14,95 @@ class AuthController implements IControllerBase {
   }
 
   initRoutes() {
+    /**
+     * @swagger
+     * /api/v1/signup:
+     *  post:
+     *    summary: Create a JSONPlaceholder user
+     *    requestBody:
+     *      required: true
+     *      content:
+     *        application/json:
+     *          schema:
+     *            type: object
+     *            properties:
+     *              login:
+     *                type: string
+     *              password:
+     *                type: string
+     *              email:
+     *                type: string
+     *    responses:
+     *      201:
+     *        description: Create user
+     *      400:
+     *        description: The required data is missing
+     *      409:
+     *        description: Data is not uniq
+     *      500:
+     *        description: Internal error
+     */
     this.router.post('/signup', AuthController.up);
+    /**
+     * @swagger
+     * /api/v1/signin:
+     *  post:
+     *    summary: Authenticate user
+     *    requestBody:
+     *      required: true
+     *      content:
+     *        application/json:
+     *          schema:
+     *            type: object
+     *            properties:
+     *              email:
+     *                type: string
+     *              password:
+     *                type: string
+     *    responses:
+     *      200:
+     *        description: Authenticate user success
+     *        content:
+     *            application/json:
+     *              schema:
+     *                type: object
+     *                properties:
+     *                  accessToken:
+     *                    type: string
+     *        headers:
+     *          Set-Cookie:
+     *            schema:
+     *              type: string
+     *              example: JWT=abcde12345sadasdasdqwe3423e3=; Path=/; HttpOnly
+     *      400:
+     *        description: The required data is missing
+     *      401:
+     *        description: Email or password not correct, try again
+     *        content:
+     *            application/json:
+     *              schema:
+     *                type: object
+     *                properties:
+     *                  message: string
+     */
     this.router.post('/signin', AuthController.in);
+    /**
+     * @swagger
+     * /api/v1/logout:
+     *  get:
+     *    summary: Log out user
+     *    responses:
+     *      204:
+     *        description: Clear jwt
+     *      200:
+     *        description: Clear jwt
+     * components:
+     *  securitySchemes:
+     *    cookieAuth:
+     *      type: apiKey
+     *      in: cookie
+     *      name: jwt
+     */
     this.router.get('/logout', AuthController.out);
   }
 
@@ -35,7 +122,7 @@ class AuthController implements IControllerBase {
     } catch (err) {
       return res.status(500).json({ message: err.message });
     }
-    return res.sendStatus(200);
+    return res.sendStatus(201);
   };
 
   static in = async (req: Request, res: Response) => {
@@ -66,7 +153,8 @@ class AuthController implements IControllerBase {
         maxAge: 1000 * 60 * 60 * 24,
       });
       return res.status(200).json({ accessToken });
-    } return res.sendStatus(404);
+    }
+    return res.sendStatus(404);
   };
 
   static out = async (req: Request, res: Response) => {

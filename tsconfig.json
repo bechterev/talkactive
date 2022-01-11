@@ -1,7 +1,10 @@
 {
+  "include": ["src/**/*", "dist/server.js", "dist/interfaces/base.js", "dist/data/room/interface.js", "dist/data/room/interface.js", "dist/controllers/auth.js"],
     "compilerOptions": {
       "esModuleInterop": true,
+      "target": "es5",
       "outDir": "dist",
-      "baseUrl": "."
+      "baseUrl": ".",
+      "typeRoots": ["types"],
     }
   }

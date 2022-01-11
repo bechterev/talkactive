@@ -2,8 +2,14 @@ import express, { Application } from 'express';
 import mongoose from 'mongoose';
 import { createServer, Server } from 'http';
 import * as socketIo from 'socket.io';
+import * as swaggerUI from 'swagger-ui-express';
 import ChatEvent from './interfaces/chat_event';
 import { ChatMessage } from './interfaces/chat_message';
+import swaggerSpec from './controllers/swagger_spec';
+import Room from './data/room/schema';
+import User from './data/user/schema';
+import CallState from './interfaces/state_call';
+import rtc from './rtc/agora';
 
 class App {
   public app: Application;
@@ -14,8 +20,6 @@ class App {
 
   private server: Server;
 
-  private io: socketIo.Server;
-
   constructor(appInit: {
     port: number;
     middleWares: any;
@@ -25,6 +29,7 @@ class App {
     this.app = express();
     this.port = appInit.port;
     this.conStr = appInit.dbString;
+    this.addDocs();
     this.middlewares(appInit.middleWares);
     this.routes(appInit.controllers);
     this.assets();
@@ -33,7 +38,8 @@ class App {
   }
 
   private initSocket(): void {
-    this.io = new socketIo.Server(this.server);
+    const io = new socketIo.Server(this.server);
+    this.app.set('io', io);
   }
 
   private dbConnect() {
@@ -52,13 +58,17 @@ class App {
     forEach: (arg0: (controller: any) => void) => void;
   }) {
     controllers.forEach((controller) => {
-      this.app.use('/', controller.router);
+      this.app.use(process.env.BASE_PREFIX, controller.router);
     });
   }
 
   private assets() {
     this.app.use(express.static('public'));
     this.app.use(express.static('views'));
+  }
+
+  private addDocs() {
+    this.app.use('/docs', swaggerUI.serve, swaggerUI.setup(swaggerSpec));
   }
 
   // private template() {}
@@ -70,12 +80,65 @@ class App {
           this.server.listen(this.port, () => {
             console.log(`App listening on the http://localhost:${this.port}`);
           });
-          this.io.on(ChatEvent.CONNECT, (socket: any) => {
-            console.log('Connected client on port %s.', this.port, socket.it);
-            socket.on('switch room', () => {});
-            socket.on(ChatEvent.MESSAGE, (m: ChatMessage) => {
+          const io = this.app.get('io');
+          io.on(ChatEvent.CONNECT, (socket: any) => {
+            console.log('Connected client on port %s.', this.port);
+            socket.on(ChatEvent.JOINROOM, ({ titleRoom, email }) => {
+              console.log(socket);
+              Room.findOne({ title: titleRoom })
+                .sort({ createTime: -1 })
+                .then((roombd) => {
+                  if (roombd.members.length < 3) {
+                    if (!roombd.members.includes(email)) {
+                      roombd.members.push(email);
+                      socket.join(titleRoom);
+                      io.to(titleRoom).emit('message', {
+                        room: titleRoom,
+                        message: 'hello friend',
+                      });
+                      if (roombd.members.length === 3) {
+                        Room.updateOne(
+                          { _id: roombd.id },
+                          {
+                            stateCall: CallState.Work,
+                            members: roombd.members,
+                          },
+                        ).then(() => {
+                          User.find()
+                            .where({ email: { $in: roombd.members } })
+                            .then((users) => {
+                              const usersImportantData = users.map((el) => ({
+                                email: el.email,
+                                mask: el.mask,
+                                rating: el.rating,
+                              }));
+                              rtc({
+                                isPublisher: true,
+                                channel: process.env.CHANNEL_ID,
+                              }).then(({ uid, token }) => {
+                                io.to(titleRoom).emit('message', {
+                                  uid,
+                                  token,
+                                  usersImportantData,
+                                });
+                              });
+                            });
+                        });
+                      } else {
+                        roombd.save();
+                      }
+                    }
+                  } else {
+                    console.log('wait free room or create new');
+                  }
+                })
+                .catch((err) => {
+                  console.log(err, 'error');
+                });
+            });
+            socket.on(ChatEvent.MESSAGE, (m) => {
               console.log('[server](message): %s', JSON.stringify(m));
-              this.io.emit('message', m);
+              socket.to(m.room).emit(m.message);
             });
 
             socket.on(ChatEvent.DISCONNECT, () => {

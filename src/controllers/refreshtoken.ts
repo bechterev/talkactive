@@ -12,6 +12,28 @@ class RefreshTokenController implements IControllerBase {
     this.initRoutes();
   }
 
+  /**
+   * @swagger
+   * /api/v1/refresh:
+   *  get:
+   *    summary: Create a JSON
+   *    responses:
+   *      description: Authenticate user success
+   *      content:
+   *        application/jwt:
+   *          schema:
+   *            type: string
+   *      200:
+   *      headers:
+   *        Set-Cookie:
+   *          schema:
+   *            type: string
+   *            example: JWT=abcde12345sadasdasdqwe3423e3=; Path=/; HttpOnly
+   *      401:
+   *        description: Cookie auth not correct, try again
+   *      403:
+   *        description: User not found
+   */
   initRoutes() {
     this.router.get('/refresh', RefreshTokenController.refresh);
   }
@@ -30,8 +52,14 @@ class RefreshTokenController implements IControllerBase {
         const accessToken = jwt.sign(
           { email: decode.email },
           process.env.ACCESS_TOKEN_SECRET,
-          { expiresIn: '5m' },
+          { expiresIn: '15m' },
         );
+        user.token = refreshToken;
+        user.save();
+        res.cookie('jwt', refreshToken, {
+          httpOnly: true,
+          maxAge: 1000 * 60 * 60 * 24,
+        });
         return res.json({ accessToken });
       },
     );
