@@ -1,11 +1,16 @@
-import { format } from 'date-fns';
+import { format, addMinutes } from 'date-fns';
 import express, { Request, Response } from 'express';
-import io from 'socket.io-client';
 import Room from '../data/room/schema';
 import User from '../data/user/schema';
 import IControllerBase from '../interfaces/base';
-import CallState from '../interfaces/state_call';
-import quete from '../quete_import';
+import { CallState } from '../interfaces/state_call';
+import {
+  addRoomInQueue, addUserInRoomQueue,
+  checkStateRoomQueue, leaveRoomQueue,
+} from '../services/queue';
+import getUser from '../services/users';
+import { addUserFromRoom, changeStateRoom, getRoomFree } from '../services/rooms';
+import { StateAddUserQueue } from '../queue_import';
 
 class RoomController implements IControllerBase {
   public router = express.Router();
@@ -18,15 +23,18 @@ class RoomController implements IControllerBase {
     /**
      * @swagger
      * /room/{id}:
-     *  get:
+     *  post:
      *    summary: Join user from quet room
      *    responses:
      *      200:
-     *        description: user add quet
+     *        description: user add queue
      *      400:
      *        description: user or email not exist
      */
-    this.router.get('/room/:id', RoomController.joinAnyRoom);
+    this.router.post('/room/join/:room_id', RoomController.joinRoom);
+    this.router.post('/room/join/', RoomController.joinAnyRoom);
+    this.router.get('/room/:id', RoomController.checkRoom);
+    this.router.post('/room/leave/:id', RoomController.leaveRoom);
     /**
      * @swagger
      * /room/create:
@@ -96,16 +104,47 @@ class RoomController implements IControllerBase {
     this.router.get('/room/list', RoomController.listRooms);
   }
 
-  static joinAnyRoom = async (
-    req: Request & { email: string },
+  static joinRoom = async (
+    req: Request,
     res: Response,
   ) => {
-    const { email } = req;
-    if (!email) return res.sendStatus(400);
-    const user = await User.findOne({ email });
-    if (!user) return res.sendStatus(400);
-    quete.quetUser.push(user.login);
+    const [user, room] = await Promise.all([getUser(req), getRoomFree(req)]);
+
+    if (!user || !room) return res.sendStatus(400);
+    console.log(user, room);
+    const queue = await addUserInRoomQueue(user);
+    switch (queue) {
+      case StateAddUserQueue.Attended:
+        return res.status(409)
+          .json({ message: 'you are in one of the rooms, expect other participants' });
+
+      case StateAddUserQueue.Wait: {
+        return res.status(200)
+          .json({ message: 'no rooms available, you have been added to the queue' });
+      }
+      default:
+        break;
+    }
+    if (!queue) return res.status(409).json({ message: 'Rooms is full, you is members of a room, you add in queue from room' });
+    const status = await addUserFromRoom(room._id, room.members, user.email);
+
+    if (!status) return res.status(409).json({ message: 'Rooms is full or you is members of a room' });
+
     return res.sendStatus(200);
+  };
+
+  static joinAnyRoom = async (
+    req: Request,
+    res: Response,
+  ) => {
+    try {
+      const user = await getUser(req);
+      if (!user) return res.status(404).json({ message: 'user not found' });
+
+      await addUserInRoomQueue({ email: user.email });
+    } catch (err) { console.log(err, 'room join any'); }
+
+    return res.status(200).json({ message: 'you have been added to the queue' });
   };
 
   static createRoom = async (
@@ -114,17 +153,26 @@ class RoomController implements IControllerBase {
   ) => {
     const { titleRoom } = req.body;
     const { email } = req;
+
     if (!titleRoom) return res.sendStatus(400);
+
     const owner = await User.findOne({ email });
     const room = await Room.create({
       title: titleRoom,
       owner: owner.id,
-      createTime: format(new Date(), 'MM.dd.yyyy HH:mm:ss'),
+      expire_at: format(addMinutes(new Date(), 5), 'MM.dd.yyyy HH:mm:ss'),
       members: [email],
-      stateCall: CallState.Init,
+      stateRoom: CallState.Wait,
     });
-    const socket = io('http://localhost:3000');
-    socket.emit('join', { titleRoom, email });
+
+    await addRoomInQueue({
+      room_id: room.id,
+      title: room.title,
+      expire_at: room.expire_at,
+      members: [email],
+      stateRoom: CallState.Wait,
+    });
+
     return res.json({ room: room.id }).status(200);
   };
 
@@ -133,9 +181,44 @@ class RoomController implements IControllerBase {
     res: Response,
   ) => {
     const { email } = req;
+
     if (!email) res.sendStatus(400);
+
     const list = await Room.find().exec();
     return res.json(list);
+  };
+
+  static checkRoom = async (
+    req: Request,
+    res: Response,
+  ) => {
+    const roomId = req.params.room_id;
+    if (!roomId) return res.status(404).json({ message: 'room not found' });
+
+    const user = await getUser(req);
+    if (!user) return res.status(404).json({ message: 'user not found' });
+
+    const stateRoom = await checkStateRoomQueue(roomId, user.email);
+    if (!stateRoom) return res.status(404).json({ message: 'room not found or you no member her' });
+
+    return res.status(200).json({ stateRoom });
+  };
+
+  static leaveRoom = async (
+    req: Request,
+    res: Response,
+  ) => {
+    const roomId = req.params.room_id;
+    if (roomId) return res.status(404).json({ message: 'Room not found' });
+
+    const user = await getUser(req);
+    if (!user) return res.status(404).json({ message: 'user not found' });
+
+    const result = await leaveRoomQueue(roomId, user.email);
+    if (!result) return res.status(404).json({ message: 'Room not found' });
+
+    await changeStateRoom(roomId, <CallState> await checkStateRoomQueue(roomId, user.email, true));
+    return res.status(200).json({ message: 'You leave this room' });
   };
 }
 

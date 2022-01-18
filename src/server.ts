@@ -1,5 +1,6 @@
 import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
+import session from 'express-session';
 import * as dotenv from 'dotenv';
 import path from 'path';
 import AuthController from './controllers/auth';
@@ -24,6 +25,7 @@ const app = new App({
     bodyParser.json(),
     bodyParser.urlencoded({ extended: true }),
     cookieParser(),
+    session({ secret: 'SID' }),
     //        loggerMiddleware
     verifyJWT,
   ],

@@ -1,8 +1,9 @@
 import * as bcrypt from 'bcrypt';
-import * as jwt from 'jsonwebtoken';
 import express, { Response, Request } from 'express';
 import IControllerBase from '../interfaces/base';
 import User from '../data/user/schema';
+import Token from '../data/token/schema';
+import generateToken from '../services/jwt_refresh';
 
 class AuthController implements IControllerBase {
   static error_body = { message: 'Email or password are requred' };
@@ -42,7 +43,7 @@ class AuthController implements IControllerBase {
      *      500:
      *        description: Internal error
      */
-    this.router.post('/signup', AuthController.up);
+    this.router.post('/signup', AuthController.signup);
     /**
      * @swagger
      * /api/v1/signin:
@@ -85,7 +86,7 @@ class AuthController implements IControllerBase {
      *                properties:
      *                  message: string
      */
-    this.router.post('/signin', AuthController.in);
+    this.router.post('/signin', AuthController.signin);
     /**
      * @swagger
      * /api/v1/logout:
@@ -103,16 +104,18 @@ class AuthController implements IControllerBase {
      *      in: cookie
      *      name: jwt
      */
-    this.router.get('/logout', AuthController.out);
+    this.router.get('/logout', AuthController.logout);
   }
 
-  static up = async (req: Request, res: Response) => {
+  static signup = async (req: Request, res: Response) => {
     const { login, email, password } = req.body;
 
     if (!email || !password) return res.status(400).json(this.error_body);
+
     const duplicate = await User.findOne({ email }).exec();
 
     if (duplicate) return res.status(409).json({ message: 'error' });
+
     try {
       const hashPWD = await bcrypt.hash(
         password,
@@ -122,53 +125,40 @@ class AuthController implements IControllerBase {
     } catch (err) {
       return res.status(500).json({ message: err.message });
     }
+
     return res.sendStatus(201);
   };
 
-  static in = async (req: Request, res: Response) => {
+  static signin = async (req: Request, res: Response) => {
     const { email, password } = req.body;
+
     if (!email || !password) return res.status(400).json(this.error_body);
     const user = await User.findOne({ email });
+
     if (user) {
       const pwdMatch = await bcrypt.compare(password, user.password);
+
       if (!pwdMatch) {
         return res
           .status(401)
           .json({ message: 'email or password not correct, try again' });
       }
-      const accessToken = jwt.sign(
-        { email: user.email },
-        process.env.ACCESS_TOKEN_SECRET,
-        { expiresIn: '5m' },
-      );
-      const refreshToken = jwt.sign(
-        { email: user.email },
-        process.env.REFRESH_TOKEN_SECRET,
-        { expiresIn: '1d' },
-      );
-      user.token = refreshToken;
-      await user.save();
-      res.cookie('jwt', refreshToken, {
-        httpOnly: true,
-        maxAge: 1000 * 60 * 60 * 24,
-      });
-      return res.status(200).json({ accessToken });
+
+      return res.status(200).json(await generateToken(user.email, req.sessionID, user.id));
     }
+
     return res.sendStatus(404);
   };
 
-  static out = async (req: Request, res: Response) => {
-    const cookie = req.cookies;
-    if (!cookie?.jwt) return res.sendStatus(204);
-    const refreshToken = cookie.jwt;
-    const user = await User.findOne({ token: refreshToken });
-    if (!user) {
-      res.clearCookie('jwt', { httpOnly: true });
-      return res.sendStatus(204);
+  static logout = async (req: Request, res: Response) => {
+    const tokens = await Token.find({}).where({ revoke: false, session_id: req.sessionID });
+
+    if (tokens) {
+      const listTokenUpdate = tokens.map((el) => el.id);
+      await Token.updateMany({ _id: { $in: listTokenUpdate } }, { revoke: <any>true });
+      return res.sendStatus(200);
     }
-    user.token = '';
-    await user.save();
-    res.clearCookie('jwt', { httpOnly: true });
+
     return res.sendStatus(200);
   };
 }
