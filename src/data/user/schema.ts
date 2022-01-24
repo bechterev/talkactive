@@ -1,7 +1,7 @@
 import mongoose, { Schema } from 'mongoose';
-import { User } from './interface';
+import { IUser } from './interface';
 
-const UserSchema: Schema = new Schema<User>({
+const UserSchema: Schema = new Schema<IUser>({
   login: { required: true, type: String },
   password: { required: true, type: String },
   email: { required: true, type: String },
@@ -9,4 +9,4 @@ const UserSchema: Schema = new Schema<User>({
   rating: { default: 0, type: Number },
   token: { default: '', type: String },
 });
-export default mongoose.model<User>('User', UserSchema);
+export default mongoose.model<IUser>('User', UserSchema);

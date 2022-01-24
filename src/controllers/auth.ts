@@ -36,6 +36,15 @@ class AuthController implements IControllerBase {
      *    responses:
      *      201:
      *        description: Create user
+     *        content:
+     *          application/json:
+     *            schema:
+     *              type: object
+     *              properties:
+     *                accessToken:
+     *                  type: string
+     *                refreshToken:
+     *                  type: string
      *      400:
      *        description: The required data is missing
      *      409:
@@ -70,11 +79,8 @@ class AuthController implements IControllerBase {
      *                properties:
      *                  accessToken:
      *                    type: string
-     *        headers:
-     *          Set-Cookie:
-     *            schema:
-     *              type: string
-     *              example: JWT=abcde12345sadasdasdqwe3423e3=; Path=/; HttpOnly
+     *                  refreshToken:
+     *                    type: string
      *      400:
      *        description: The required data is missing
      *      401:
@@ -97,12 +103,6 @@ class AuthController implements IControllerBase {
      *        description: Clear jwt
      *      200:
      *        description: Clear jwt
-     * components:
-     *  securitySchemes:
-     *    cookieAuth:
-     *      type: apiKey
-     *      in: cookie
-     *      name: jwt
      */
     this.router.get('/logout', AuthController.logout);
   }
@@ -116,17 +116,19 @@ class AuthController implements IControllerBase {
 
     if (duplicate) return res.status(409).json({ message: 'error' });
 
+    let user;
     try {
       const hashPWD = await bcrypt.hash(
         password,
         Number(process.env.SALT_ROUND),
       );
-      await User.create({ login, email, password: hashPWD });
+      user = await User.create({ login, email, password: hashPWD });
     } catch (err) {
       return res.status(500).json({ message: err.message });
     }
+    if (user) return res.status(201).json(await generateToken(req.sessionID, user.id));
 
-    return res.sendStatus(201);
+    return res.status(500).json({ message: 'sorry user was dosn\'t save' });
   };
 
   static signin = async (req: Request, res: Response) => {
@@ -144,7 +146,7 @@ class AuthController implements IControllerBase {
           .json({ message: 'email or password not correct, try again' });
       }
 
-      return res.status(200).json(await generateToken(user.email, req.sessionID, user.id));
+      return res.status(200).json(await generateToken(req.sessionID, user.id));
     }
 
     return res.sendStatus(404);

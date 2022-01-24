@@ -41,31 +41,29 @@ class RefreshTokenController implements IControllerBase {
   }
 
   static refresh = async (req: Request, res: Response) => {
-    const token = req.headers.authorization;
+    const { token } = req.body;
     const session = req.sessionID;
-
     if (!token) return res.sendStatus(401);
 
-    const oldToken = token.replace('Bearer ', '');
     const tokenbd = await Token.findOne({
       session_id: session,
-      refresh_token: oldToken,
+      refresh_token: token,
       refresh_expires: { $gte: Date.now() },
       revoke: false,
     });
 
-    if (!tokenbd) return res.sendStatus(403);
+    if (!tokenbd) return res.sendStatus(401);
 
     const user = await User.findOne({ _id: tokenbd.user_id });
 
-    if (!user) return res.sendStatus(403);
+    if (!user) return res.sendStatus(401);
     jwt.verify(
-      oldToken,
+      token,
       process.env.REFRESH_TOKEN_SECRET,
       (err, decode) => {
-        if (err || user.email !== decode.email) return res.sendStatus(403);
+        if (err || user.id !== decode.user_id) return res.sendStatus(401);
 
-        return generateToken(user.email, req.sessionID, user.id)
+        return generateToken(req.sessionID, user.id)
           .then((tokens) => res.json({
             accessToken: tokens.accessToken,
             refreshToken: tokens.refreshToken,

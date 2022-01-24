@@ -4,7 +4,8 @@ import { createServer, Server } from 'http';
 import * as socketIo from 'socket.io';
 import * as swaggerUI from 'swagger-ui-express';
 import swaggerSpec from './controllers/swagger_spec';
-import task from './services/task.update.queue';
+import cronos from './services/cronos';
+// import task from './services/task.update.queue';
 
 class App {
   public app: Application;
@@ -29,7 +30,8 @@ class App {
     this.routes(appInit.controllers);
     this.assets();
     this.server = createServer(this.app);
-    task();
+    cronos();
+    // task();
   }
 
   private initSocket(): void {

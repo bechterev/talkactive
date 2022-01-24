@@ -1,16 +1,14 @@
-import { format, addMinutes } from 'date-fns';
 import express, { Request, Response } from 'express';
 import Room from '../data/room/schema';
 import User from '../data/user/schema';
 import IControllerBase from '../interfaces/base';
 import { CallState } from '../interfaces/state_call';
+import { getUser, managedUser, getWaitUsersSize } from '../services/users';
 import {
-  addRoomInQueue, addUserInRoomQueue,
-  checkStateRoomQueue, leaveRoomQueue,
-} from '../services/queue';
-import getUser from '../services/users';
-import { addUserFromRoom, changeStateRoom, getRoomFree } from '../services/rooms';
-import { StateAddUserQueue } from '../queue_import';
+  addUserFromRoom, createRoom, getFreeRoom,
+  leaveRoom, checkRoom,
+} from '../services/rooms';
+import ActionManageUser from '../interfaces/action_manage_user';
 
 class RoomController implements IControllerBase {
   public router = express.Router();
@@ -22,18 +20,73 @@ class RoomController implements IControllerBase {
   initRoutes() {
     /**
      * @swagger
-     * /room/{id}:
+     * /room/join/{room_id}:
      *  post:
-     *    summary: Join user from quet room
+     *    summary: User join concrete room
      *    responses:
      *      200:
-     *        description: user add queue
+     *        description: user add room
+     *        content:
+     *          application/json:
+     *            schema:
+     *              $ref: '#/components/Schemas/Room'
      *      400:
      *        description: user or email not exist
      */
     this.router.post('/room/join/:room_id', RoomController.joinRoom);
+    /**
+     * @swagger
+     * /room/join:
+     *  post:
+     *    summary: the user has been added to the queue to wait for a room
+     *    responses:
+     *      201:
+     *        description: count list wait users
+     *        content:
+     *          application/json:
+     *            schema:
+     *              type: number
+     *      409:
+     *        description: the user is already in the queue
+     *      400:
+     *        description: user not add room
+     */
     this.router.post('/room/join/', RoomController.joinAnyRoom);
+    /**
+     * @swagger
+     * /room/{id}:
+     *  get:
+     *    summary: get status of a room
+     *    responses:
+     *      201:
+     *        description: return a room to a member of this room
+     *        content:
+     *          application/json:
+     *            schema:
+     *              $ref: '#/components/Schemas/Room'
+     *      404:
+     *        description: room not found
+     *      500:
+     *        description: an unexpected mistake
+     */
     this.router.get('/room/:id', RoomController.checkRoom);
+    /**
+     * @swagger
+     * /room/leave/{id}:
+     *  post:
+     *    summary: leave room
+     *    responses:
+     *      200:
+     *        description: return a room to a member of this room
+     *        content:
+     *          application/json:
+     *            schema:
+     *              $ref: '#/components/Schemas/Room'
+     *      404:
+     *        description: room not found
+     *      500:
+     *        description: an unexpected mistake
+     */
     this.router.post('/room/leave/:id', RoomController.leaveRoom);
     /**
      * @swagger
@@ -42,16 +95,29 @@ class RoomController implements IControllerBase {
      *    summary: Create room
      *    responses:
      *      200:
-     *        description: create new room
+     *        description: leave room id
+     *        content:
+     *          application/json:
+     *            schema:
+     *              type: string
+     *      404:
+     *        description: not found room
      *        content:
      *          application/json:
      *            schema:
      *              type: object
      *              properties:
-     *                room:
+     *                message:
      *                  type: string
-     *      400:
-     *        description: title not found
+     *      500:
+     *        description: an unexpected mistake
+     *        content:
+     *          application/json:
+     *            schema:
+     *              type: object
+     *              properties:
+     *                message:
+     *                  type: string
      */
     this.router.post('/room/create', RoomController.createRoom);
     /**
@@ -75,7 +141,7 @@ class RoomController implements IControllerBase {
      * components:
      *  schemas:
      *    User:
-     *      type: Object
+     *      type: object
      *      properties:
      *        id:
      *          type: string
@@ -100,80 +166,94 @@ class RoomController implements IControllerBase {
      *        token:
      *          type: string
      *          example: sjidoij0239ip32j32ro9eif-32i4pr32o4j32i0-023
+     *    Room:
+     *      type: object
+     *      properties:
+     *        id:
+     *          type: string
+     *          example: "5fdedb7c25ab1352eef88f60"
+     *        title:
+     *          type: string
+     *        owner:
+     *          type: string
+     *        members:
+     *          type: Array
+     *          items:
+     *            type: string
+     *        expire_at:
+     *          type: string
+     *          format: date
+     *        stateRoom:
+     *          type: string
      */
     this.router.get('/room/list', RoomController.listRooms);
   }
 
   static joinRoom = async (
-    req: Request,
+    req: Request & { userId: string },
     res: Response,
   ) => {
-    const [user, room] = await Promise.all([getUser(req), getRoomFree(req)]);
+    const user = await getUser(req.userId);
 
-    if (!user || !room) return res.sendStatus(400);
-    console.log(user, room);
-    const queue = await addUserInRoomQueue(user);
-    switch (queue) {
-      case StateAddUserQueue.Attended:
-        return res.status(409)
-          .json({ message: 'you are in one of the rooms, expect other participants' });
+    if (!user || !req.params.room_id) return res.sendStatus(404);
 
-      case StateAddUserQueue.Wait: {
-        return res.status(200)
-          .json({ message: 'no rooms available, you have been added to the queue' });
-      }
-      default:
-        break;
-    }
-    if (!queue) return res.status(409).json({ message: 'Rooms is full, you is members of a room, you add in queue from room' });
-    const status = await addUserFromRoom(room._id, room.members, user.email);
+    const stateRoom = await addUserFromRoom(req.params.room_id, user);
+    if (stateRoom) return res.status(200).json({ message: `you add from room ${stateRoom}` });
 
-    if (!status) return res.status(409).json({ message: 'Rooms is full or you is members of a room' });
-
-    return res.sendStatus(200);
+    return res.status(409).json({ message: `you not add from room ${req.params.room_id}` });
   };
 
   static joinAnyRoom = async (
-    req: Request,
+    req: Request & { userId: string },
     res: Response,
   ) => {
+    const user = await getUser(req.userId);
+    if (!user) return res.status(404).json({ message: 'user not found' });
+
     try {
-      const user = await getUser(req);
-      if (!user) return res.status(404).json({ message: 'user not found' });
+      const freeRooms = await getFreeRoom();
+      const waitRoom = freeRooms.find((room) => room.members.some((el) => el === user.id));
 
-      await addUserInRoomQueue({ email: user.email });
-    } catch (err) { console.log(err, 'room join any'); }
-
-    return res.status(200).json({ message: 'you have been added to the queue' });
+      if (!waitRoom) {
+        try {
+          await managedUser(user.id, ActionManageUser.Add);
+          return res.status(201).json({
+            message: `expect other participants, now ${await getWaitUsersSize()} people are waiting for a room`,
+          });
+        } catch (error) {
+          res.json({ error: error.message });
+        }
+      }
+      res.status(409).json({ message: 'the user is in one of the rooms' });
+    } catch (err) {
+      return res.status(400).json({ message: `user not add room, because ${err}` });
+    }
+    return res.status(400).json({ message: 'user not add room' });
   };
 
   static createRoom = async (
-    req: Request & { email: string },
+    req: Request & { userId: string },
     res: Response,
   ) => {
     const { titleRoom } = req.body;
-    const { email } = req;
+    const { userId } = req;
 
     if (!titleRoom) return res.sendStatus(400);
 
-    const owner = await User.findOne({ email });
-    const room = await Room.create({
-      title: titleRoom,
-      owner: owner.id,
-      expire_at: format(addMinutes(new Date(), 5), 'MM.dd.yyyy HH:mm:ss'),
-      members: [email],
-      stateRoom: CallState.Wait,
-    });
+    const owner = await User.findOne({ _id: userId });
+    let room;
+    if (!owner) return res.status(404).json({ message: 'User not found' });
+    try {
+      room = await createRoom({
+        title: titleRoom,
+        owner: owner.id,
+        expire_at: new Date(),
+        members: [owner.id],
+        stateRoom: CallState.Wait,
+      });
+    } catch (err) { res.status(400).json(`Error from create room: ${err}`); }
 
-    await addRoomInQueue({
-      room_id: room.id,
-      title: room.title,
-      expire_at: room.expire_at,
-      members: [email],
-      stateRoom: CallState.Wait,
-    });
-
-    return res.json({ room: room.id }).status(200);
+    return res.json({ room }).status(201);
   };
 
   static listRooms = async (
@@ -189,36 +269,42 @@ class RoomController implements IControllerBase {
   };
 
   static checkRoom = async (
-    req: Request,
+    req: Request & { userId: string },
     res: Response,
   ) => {
-    const roomId = req.params.room_id;
+    const roomId = req.params.id;
+
     if (!roomId) return res.status(404).json({ message: 'room not found' });
+    try {
+      const stateRoom = await checkRoom(roomId, req.userId);
+      if (!stateRoom) return res.status(404).json({ message: 'room not found or you no member her' });
+      return res.status(200).json({ stateRoom });
+    } catch (err) {
+      res.status(404).json({ message: err.message });
+    }
 
-    const user = await getUser(req);
-    if (!user) return res.status(404).json({ message: 'user not found' });
-
-    const stateRoom = await checkStateRoomQueue(roomId, user.email);
-    if (!stateRoom) return res.status(404).json({ message: 'room not found or you no member her' });
-
-    return res.status(200).json({ stateRoom });
+    return res.status(500).json({ message: 'error enternal' });
   };
 
   static leaveRoom = async (
-    req: Request,
+    req: Request & { userId: string },
     res: Response,
   ) => {
-    const roomId = req.params.room_id;
-    if (roomId) return res.status(404).json({ message: 'Room not found' });
+    const roomId = req.params.room_id || req.params.id;
 
-    const user = await getUser(req);
-    if (!user) return res.status(404).json({ message: 'user not found' });
+    if (!roomId) return res.status(404).json({ message: 'Room not found' });
+    try {
+      const user = await getUser(req.userId);
+      if (!user) return res.status(404).json({ message: 'user not found' });
 
-    const result = await leaveRoomQueue(roomId, user.email);
-    if (!result) return res.status(404).json({ message: 'Room not found' });
+      const result = await leaveRoom(roomId, user.id);
+      if (!result) return res.status(404).json({ message: 'Room not found' });
 
-    await changeStateRoom(roomId, <CallState> await checkStateRoomQueue(roomId, user.email, true));
-    return res.status(200).json({ message: 'You leave this room' });
+      return res.status(200).json(result);
+    } catch (err) {
+      console.log(err);
+    }
+    return res.status(500).json({ message: 'enternal error' });
   };
 }
 

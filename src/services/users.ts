@@ -1,17 +1,32 @@
-import { Request } from 'express';
-import Token from '../data/token/schema';
 import User from '../data/user/schema';
+import ActionManageUser from '../interfaces/action_manage_user';
 
-const getUser = async (req: Request) => {
-  let token = req.headers.authorization;
-  token = token.replace('Bearer ', '');
-  const tokendb = await Token.findOne({
-    access_token: token,
-    access_expires: { $gte: new Date() },
-    revoke: false,
-  });
-  const user = await User.findOne({ _id: tokendb.user_id });
-  return user;
+const usersWaiting : Array<string> = [];
+
+const managedUser = async (user_id: string, action: ActionManageUser) => {
+  const uniqUser = new Set(usersWaiting);
+  const matchUser = uniqUser.has(user_id);
+  if (action === ActionManageUser.Add) {
+    if (matchUser) throw new Error('the user already exists');
+    usersWaiting.push(user_id);
+  }
+  if (action === ActionManageUser.Delete) {
+    if (!matchUser) throw new Error('the user already not exists');
+    usersWaiting.splice(0, 1);
+  }
 };
 
-export default getUser;
+const getWaitUsers = async (count: number = 1) => {
+  if (count < usersWaiting.length) return usersWaiting.slice(0, count);
+  return [...usersWaiting];
+};
+
+const getUser = async (userId: string) => {
+  const user = await User.findOne({ _id: userId });
+  return user;
+};
+const getWaitUsersSize = async () => usersWaiting.length;
+
+export {
+  getUser, managedUser, getWaitUsers, getWaitUsersSize,
+};

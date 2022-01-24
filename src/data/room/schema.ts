@@ -1,12 +1,11 @@
 import mongoose, { Schema } from 'mongoose';
-import { Room } from './interface';
+import { IRoom } from './interface';
 import { CallState } from '../../interfaces/state_call';
 
-const RoomSchema: Schema = new Schema<Room>({
+const RoomSchema: Schema = new Schema<IRoom>({
   title: { required: true, type: String },
-  owner: { required: true, type: mongoose.Schema.Types.ObjectId },
+  owner: { type: mongoose.Schema.Types.ObjectId },
   expire_at: { required: true, type: Date },
-  duraction: { type: Date },
   members: { type: [String], default: [] },
   stateRoom: {
     default: CallState.Init,
@@ -14,4 +13,4 @@ const RoomSchema: Schema = new Schema<Room>({
     enum: Object.values(CallState),
   },
 });
-export default mongoose.model<Room>('Room', RoomSchema);
+export default mongoose.model<IRoom>('Room', RoomSchema);

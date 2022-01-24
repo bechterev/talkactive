@@ -2,7 +2,7 @@ import express, { Response, Request } from 'express';
 import * as bcrypt from 'bcrypt';
 import IControllerBase from '../interfaces/base';
 import User from '../data/user/schema';
-import getUser from '../services/users';
+import { getUser } from '../services/users';
 
 class UserController implements IControllerBase {
   router = express.Router();
@@ -37,7 +37,7 @@ class UserController implements IControllerBase {
     const { titleMask } = req.body;
 
     if (!titleMask) return res.sendStatus(400);
-    const user = await getUser(req);
+    const user = await getUser(req.params.user_id);
 
     if (!user) return res.sendStatus(403);
     user.mask.push(titleMask);
