@@ -3,7 +3,7 @@ import ActionManageUser from '../interfaces/action_manage_user';
 
 const usersWaiting : Array<string> = [];
 
-const managedUser = async (user_id: string, action: ActionManageUser) => {
+const managedUser = (user_id: string, action: ActionManageUser) => {
   const uniqUser = new Set(usersWaiting);
   const matchUser = uniqUser.has(user_id);
   if (action === ActionManageUser.Add) {
@@ -16,7 +16,7 @@ const managedUser = async (user_id: string, action: ActionManageUser) => {
   }
 };
 
-const getWaitUsers = async (count: number = 1) => {
+const getWaitUsers = (count: number = 1) => {
   if (count < usersWaiting.length) return usersWaiting.slice(0, count);
   return [...usersWaiting];
 };
@@ -25,7 +25,7 @@ const getUser = async (userId: string) => {
   const user = await User.findOne({ _id: userId });
   return user;
 };
-const getWaitUsersSize = async () => usersWaiting.length;
+const getWaitUsersSize = () => usersWaiting.length;
 
 export {
   getUser, managedUser, getWaitUsers, getWaitUsersSize,

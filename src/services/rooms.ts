@@ -4,6 +4,8 @@ import { CallState, callStateArray } from '../interfaces/state_call';
 import Room from '../data/room/schema';
 import { IRoom } from '../data/room/interface';
 import { genTitle } from './util';
+import { managedUser } from './users';
+import ActionManageUser from '../interfaces/action_manage_user';
 
 const getRoom = async (req: Request) => {
   const roomId = req.params.room_id;
@@ -26,18 +28,17 @@ const addUserFromRoom = async (
   roomId: string,
   user: any,
 ) => {
-  let room;
   try {
-    room = await Room.findOne({ _id: roomId });
+    const room = await Room.findOne({ _id: roomId });
     if (room.members.includes(roomId) || room.members.length === 3) return false;
     room.members.push(user.id);
     room.stateRoom = callStateArray[room.members.length];
     if (room.stateRoom !== CallState.Work) room.expire_at = addMinutes(new Date(), 5);
     await room.save();
-  } catch (err) {
     return room;
+  } catch (err) {
+    return err;
   }
-  return room;
 };
 
 const changeStateRoom = async (roomId: string, stateRoom: CallState) => {
@@ -61,44 +62,49 @@ const createRoom = async (data: Partial<IRoom>, availableFreeRoom?: boolean) => 
   } catch (err) { return err; }
 };
 
-const getFreeRoom = async () => {
-  let rooms;
-
+const getFreeRoom = async (userId?: string) => {
   try {
-    rooms = await Room.find({
+    let rooms = await Room.find({
       expire_at: { $gt: new Date() },
       $or: [{ stateRoom: CallState.Init }, { stateRoom: CallState.Wait }],
     });
-  } catch (err) { return err; }
+    if (!userId) return { rooms, newRoom: false, error: false };
 
-  if (rooms.length === 0) {
-    try {
-      rooms = [await createRoom({}, true)];
-    } catch (err) { return err; }
-    return rooms;
-  }
+    if (rooms.length === 0) {
+      const newRoomParams = userId ? { members: [userId] } : {};
+      rooms = [await createRoom(newRoomParams, true)];
 
-  return rooms;
+      return { rooms, newRoom: true, error: false };
+    }
+
+    const waitRoom = rooms.find((room) => room.members.some((el) => el === userId));
+
+    if (waitRoom) return { rooms: undefined, newRoom: false, error: `You wait in room ${waitRoom}` };
+
+    managedUser(userId, ActionManageUser.Add);
+
+    return { rooms: undefined, newRoom: false, error: false };
+  } catch (error) { return { rooms: undefined, newRoom: false, error: error.message }; }
 };
 
 const leaveRoom = async (roomId: string, user_id: string) => {
   const room = await Room.findOne({ _id: roomId });
-  if (!room) throw new Error('room not found');
 
-  switch (room.stateRoom) {
-    case CallState.Wait:
-      room.members.splice(room.members.indexOf(user_id), 1);
-      break;
-    case CallState.Init:
-      room.members.splice(0, 1);
-      break;
-    default:
-      break;
+  if (!room) return { status: false, error: 'room not found' };
+
+  room.members.splice(room.members.indexOf(user_id), 1);
+
+  if (room.stateRoom === CallState.Work && room.members.length === 0) {
+    room.stateRoom = CallState.Finish;
+  } else if (room.stateRoom === CallState.Wait && room.members.length === 1) {
+    room.stateRoom = CallState.Init;
+  } else if (room.stateRoom === CallState.Init && room.members.length === 0) {
+    room.stateRoom = CallState.Leave;
   }
-  room.stateRoom = callStateArray[room.members.length];
+
   await room.save();
 
-  return room.id;
+  return room;
 };
 
 export {

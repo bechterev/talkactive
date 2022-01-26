@@ -6,8 +6,6 @@ import Token from '../data/token/schema';
 import generateToken from '../services/jwt_refresh';
 
 class AuthController implements IControllerBase {
-  static error_body = { message: 'Email or password are requred' };
-
   public router = express.Router();
 
   constructor() {
@@ -110,58 +108,68 @@ class AuthController implements IControllerBase {
   static signup = async (req: Request, res: Response) => {
     const { login, email, password } = req.body;
 
-    if (!email || !password) return res.status(400).json(this.error_body);
+    if (!email || !password) {
+      return res.status(400)
+        .json({ status: 'false', error: 'Email or password are requred' });
+    }
 
-    const duplicate = await User.findOne({ email }).exec();
-
-    if (duplicate) return res.status(409).json({ message: 'error' });
-
-    let user;
     try {
+      const duplicate = await User.findOne({ email }).exec();
+
+      if (duplicate) return res.status(409).json({ status: false, error: 'duplicate email' });
+
       const hashPWD = await bcrypt.hash(
         password,
         Number(process.env.SALT_ROUND),
       );
-      user = await User.create({ login, email, password: hashPWD });
-    } catch (err) {
-      return res.status(500).json({ message: err.message });
-    }
-    if (user) return res.status(201).json(await generateToken(req.sessionID, user.id));
+      const user = await User.create({ login, email, password: hashPWD });
 
-    return res.status(500).json({ message: 'sorry user was dosn\'t save' });
+      return res.status(201)
+        .json({ status: true, token: await generateToken(req.sessionID, user.id) });
+    } catch (error) {
+      return res.status(500).json({ status: false, error: error.message });
+    }
   };
 
   static signin = async (req: Request, res: Response) => {
     const { email, password } = req.body;
 
-    if (!email || !password) return res.status(400).json(this.error_body);
-    const user = await User.findOne({ email });
+    if (!email || !password) {
+      return res.status(400)
+        .json({ status: 'false', error: 'Email or password are requred' });
+    }
+    try {
+      const user = await User.findOne({ email });
 
-    if (user) {
-      const pwdMatch = await bcrypt.compare(password, user.password);
+      if (user) {
+        const pwdMatch = await bcrypt.compare(password, user.password);
 
-      if (!pwdMatch) {
-        return res
-          .status(401)
-          .json({ message: 'email or password not correct, try again' });
+        if (!pwdMatch) {
+          return res
+            .status(401)
+            .json({ status: false, error: 'email or password not correct, try again' });
+        }
+
+        return res.status(201)
+          .json({ status: true, token: await generateToken(req.sessionID, user.id) });
       }
 
-      return res.status(200).json(await generateToken(req.sessionID, user.id));
-    }
-
-    return res.sendStatus(404);
+      return res.status(404).json({ status: false, error: 'user not found' });
+    } catch (error) { return res.status(500).json({ status: false, error: error.message }); }
   };
 
   static logout = async (req: Request, res: Response) => {
-    const tokens = await Token.find({}).where({ revoke: false, session_id: req.sessionID });
+    try {
+      const tokens = await Token.find({}).where({ revoke: false, session_id: req.sessionID });
 
-    if (tokens) {
-      const listTokenUpdate = tokens.map((el) => el.id);
-      await Token.updateMany({ _id: { $in: listTokenUpdate } }, { revoke: <any>true });
-      return res.sendStatus(200);
-    }
+      if (tokens) {
+        const listTokenUpdate = tokens.map((el) => el.id);
+        await Token.updateMany({ _id: { $in: listTokenUpdate } }, { revoke: <any>true });
+        return res.status(200).json({ status: true });
+      }
 
-    return res.sendStatus(200);
+      return res.status(200).json({ status: true });
+    } catch (error) { return res.status(500).json({ status: false, error: error.message }); }
   };
 }
 

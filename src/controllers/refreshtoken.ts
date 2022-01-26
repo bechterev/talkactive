@@ -6,8 +6,6 @@ import User from '../data/user/schema';
 import generateToken from '../services/jwt_refresh';
 
 class RefreshTokenController implements IControllerBase {
-  error_body = { message: 'Email or password are requred' };
-
   public router = express.Router();
 
   constructor() {
@@ -43,7 +41,7 @@ class RefreshTokenController implements IControllerBase {
   static refresh = async (req: Request, res: Response) => {
     const { token } = req.body;
     const session = req.sessionID;
-    if (!token) return res.sendStatus(401);
+    if (!token) return res.status(401).json({ status: false, error: 'Invalid authorization' });
 
     const tokenbd = await Token.findOne({
       session_id: session,
@@ -52,16 +50,16 @@ class RefreshTokenController implements IControllerBase {
       revoke: false,
     });
 
-    if (!tokenbd) return res.sendStatus(401);
+    if (!tokenbd) return res.status(401).json({ status: false, error: 'Invalid authorization' });
 
     const user = await User.findOne({ _id: tokenbd.user_id });
 
-    if (!user) return res.sendStatus(401);
+    if (!user) return res.status(401).json({ status: false, error: 'Invalid authorization' });
     jwt.verify(
       token,
       process.env.REFRESH_TOKEN_SECRET,
       (err, decode) => {
-        if (err || user.id !== decode.user_id) return res.sendStatus(401);
+        if (err || user.id !== decode.user_id) return res.status(401).json({ status: false, error: 'Invalid authorization' });
 
         return generateToken(req.sessionID, user.id)
           .then((tokens) => res.json({
@@ -70,7 +68,7 @@ class RefreshTokenController implements IControllerBase {
           }));
       },
     );
-    return undefined;
+    return res.status(200).json({ status: true });
   };
 }
 

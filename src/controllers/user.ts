@@ -1,7 +1,6 @@
 import express, { Response, Request } from 'express';
 import * as bcrypt from 'bcrypt';
 import IControllerBase from '../interfaces/base';
-import User from '../data/user/schema';
 import { getUser } from '../services/users';
 
 class UserController implements IControllerBase {
@@ -16,34 +15,41 @@ class UserController implements IControllerBase {
     this.router.post('/user/add_new_mask', UserController.addNewMask);
   }
 
-  static changePWD = async (req: Request, res: Response) => {
+  static changePWD = async (req: Request & { userId: string }, res: Response) => {
     const { currentPWD, newPWD } = req.body;
-    const cookie = req.cookies;
+    if (!currentPWD || !newPWD) {
+      return res.status(400)
+        .json({ status: false, error: 'Not found old or new password' });
+    }
 
-    if (!currentPWD || !newPWD) return res.sendStatus(400);
-    const user = await User.findOne({ token: cookie.jwt });
+    try {
+      const user = await getUser(req.userId);
 
-    if (!user) return res.sendStatus(403);
-    const matchOldPWD = await bcrypt.compare(currentPWD, user.password);
+      if (!user) return res.status(404).json({ status: false, error: 'user not found' });
+      const matchOldPWD = await bcrypt.compare(currentPWD, user.password);
 
-    if (!matchOldPWD) return res.sendStatus(404);
-    user.password = await bcrypt.hash(newPWD, Number(process.env.SALT_ROUND));
-    await user.save();
+      if (!matchOldPWD) return res.status(409).json({ status: false, error: 'new password and old password not equal' });
 
-    return res.json(user.id);
+      user.password = await bcrypt.hash(newPWD, Number(process.env.SALT_ROUND));
+      await user.save();
+
+      return res.status(200).json({ status: true, user });
+    } catch (error) { return res.status(500).json({ status: false, error: error.message }); }
   };
 
   static addNewMask = async (req: Request, res: Response) => {
     const { titleMask } = req.body;
 
-    if (!titleMask) return res.sendStatus(400);
-    const user = await getUser(req.params.user_id);
+    if (!titleMask) return res.status(404).json({ status: false, error: 'Not found title of mask' });
+    try {
+      const user = await getUser(req.params.user_id);
 
-    if (!user) return res.sendStatus(403);
-    user.mask.push(titleMask);
-    await user.save();
+      if (!user) return res.sendStatus(403);
+      user.mask.push(titleMask);
+      await user.save();
 
-    return res.json(user.id);
+      return res.status(200).json({ status: true, user });
+    } catch (error) { return res.status(500).json({ status: false, message: error.message }); }
   };
 }
 

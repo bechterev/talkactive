@@ -1,7 +1,6 @@
 import express, { Application } from 'express';
 import mongoose from 'mongoose';
 import { createServer, Server } from 'http';
-import * as socketIo from 'socket.io';
 import * as swaggerUI from 'swagger-ui-express';
 import swaggerSpec from './controllers/swagger_spec';
 import cronos from './services/cronos';
@@ -32,11 +31,6 @@ class App {
     this.server = createServer(this.app);
     cronos();
     // task();
-  }
-
-  private initSocket(): void {
-    const io = new socketIo.Server(this.server);
-    this.app.set('io', io);
   }
 
   private dbConnect() {
