@@ -5,17 +5,23 @@ import { getWaitUsers, managedUser, getWaitUsersSize } from './users';
 import ActionManageUser from '../interfaces/action_manage_user';
 import Room from '../data/room/schema';
 import { CallState } from '../interfaces/state_call';
-// import { rtc } from '../rtc/agora';
+import { notifyWork, notifyFinish } from './notification';
 
 const defaultTask = async () => {
-  const closeRoom = await Room.updateMany(
+  const closeRoom = await Room.find({
+    expire_at: { $lt: new Date() },
+    $or: [{ stateRoom: CallState.Init }, { stateRoom: CallState.Wait }],
+  });
+  await Room.updateMany(
     {
       expire_at: { $lt: new Date() },
       $or: [{ stateRoom: CallState.Init }, { stateRoom: CallState.Wait }],
     },
     { stateRoom: CallState.Timeout },
   );
-  console.log(closeRoom, 'push notify members close timeout');
+  if (closeRoom.length > 0) {
+    await Promise.all(closeRoom.map((room) => notifyFinish(room)));
+  }
   const users = getWaitUsersSize();
   if (users > 0) {
     const freeRooms = await getFreeRoom();
@@ -41,7 +47,9 @@ const defaultTask = async () => {
               },
             );
 
-            if (members.length === 3) console.log('push token members');
+            if (members.length === 3) {
+              notifyWork(members, room.id);
+            }
             firstUsers.map((el) => managedUser(el, ActionManageUser.Delete));
           }
         } catch (error) { console.log(error); }

@@ -7,6 +7,7 @@ import AuthController from './controllers/auth';
 import RefreshTokenController from './controllers/refreshtoken';
 import RoomController from './controllers/room';
 import UserController from './controllers/user';
+import DeviceController from './controllers/device';
 import App from './index';
 import verifyJWT from './middlewares/jwtverfy';
 
@@ -20,6 +21,7 @@ const app = new App({
     new UserController(),
     new RefreshTokenController(),
     new RoomController(),
+    new DeviceController(),
   ],
   middleWares: [
     bodyParser.json(),
