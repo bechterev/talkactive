@@ -2,7 +2,7 @@ import express, { Request, Response } from 'express';
 import User from '../data/user/schema';
 import IControllerBase from '../interfaces/base';
 import { CallState } from '../interfaces/state_call';
-import { getUser } from '../services/users';
+import getUser from '../services/users';
 import {
   addUserFromRoom, createRoom, getFreeRoom,
   leaveRoom, checkRoom,
@@ -43,23 +43,17 @@ class RoomController implements IControllerBase {
      * /room/join:
      *  post:
      *    summary: the user has been added to the queue to wait for a room
-     *    parameters:
-     *      - in: path
-     *      name: id
-     *      required: true
-     *      schema:
-     *        type: string
      *    responses:
      *      201:
      *        description: count list wait users
      *        content:
      *          application/json:
      *            schema:
-     *              type: number
-     *      409:
-     *        description: the user is already in the queue
-     *      400:
-     *        description: user not add room
+     *              $ref: '#/components/Schemas/Room'
+     *      500:
+     *        description: an unexpected error
+     *      404:
+     *        description: user not found
      */
     this.router.post('/room/join/', RoomController.joinAnyRoom);
     /**
@@ -74,7 +68,7 @@ class RoomController implements IControllerBase {
      *      schema:
      *        type: string
      *    responses:
-     *      201:
+     *      200:
      *        description: return a room to a member of this room
      *        content:
      *          application/json:
@@ -82,8 +76,6 @@ class RoomController implements IControllerBase {
      *              $ref: '#/components/Schemas/Room'
      *      404:
      *        description: room not found
-     *      500:
-     *        description: an unexpected mistake
      */
     this.router.get('/room/:id', RoomController.checkRoom);
     /**
@@ -122,12 +114,12 @@ class RoomController implements IControllerBase {
      *      schema:
      *        type: string
      *    responses:
-     *      200:
-     *        description: leave room id
+     *      201:
+     *        description: created room
      *        content:
      *          application/json:
      *            schema:
-     *              type: string
+     *              $ref: '#/components/Schemas/Room'
      *      404:
      *        description: not found room
      *        content:
@@ -225,15 +217,27 @@ class RoomController implements IControllerBase {
       const user = await getUser(req.userId);
 
       if (!user || !req.params.room_id) {
-        return res.status(404)
+        return res
+          .status(404)
           .json({ status: false, error: 'Parameter room or user not found' });
       }
 
       const room = await addUserFromRoom(req.params.room_id, user);
-      if (room) return res.status(200).json({ status: true, room });
+      if (room) {
+        return res.status(200)
+          .json({ status: true, room });
+      }
 
-      return res.status(409).json({ status: false, error: `you not add from room ${req.params.room_id}` });
-    } catch (error) { return res.status(500).json({ status: false, error: error.message }); }
+      return res
+        .status(409)
+        .json({
+          status: false,
+          error: `you not add from room ${req.params.room_id}`,
+        });
+    } catch (error) {
+      return res.status(500)
+        .json({ status: false, error: error.message });
+    }
   };
 
   static joinAnyRoom = async (
@@ -243,17 +247,22 @@ class RoomController implements IControllerBase {
     try {
       const user = await getUser(req.userId);
 
-      if (!user) return res.status(404).json({ status: false, error: 'user not found' });
+      if (!user) {
+        return res.status(404)
+          .json({ status: false, error: 'user not found' });
+      }
 
       const freeRooms = await getFreeRoom(user.id);
-      if (freeRooms.error) return res.status(500).json({ status: false, error: freeRooms.error });
+      if (freeRooms.error) {
+        return res.status(500)
+          .json({ status: false, error: freeRooms.error });
+      }
 
-      // пользователь добавлен в очередь, крон разрулит
-      if (!freeRooms.newRoom) return res.status(202).json({ status: true });
-
-      return res.status(201).json({ status: true, room: freeRooms.rooms });
+      return res.status(201)
+        .json({ status: true, room: freeRooms.rooms });
     } catch (error) {
-      return res.status(500).json({ status: false, error: error.message });
+      return res.status(500)
+        .json({ status: false, error: error.message });
     }
   };
 
@@ -265,11 +274,17 @@ class RoomController implements IControllerBase {
     const { userId } = req;
 
     try {
-      if (!titleRoom) return res.status(400).json({ status: false, error: 'Parameter room not found' });
+      if (!titleRoom) {
+        return res.status(400)
+          .json({ status: false, error: 'Parameter room not found' });
+      }
 
       const owner = await User.findOne({ _id: userId });
 
-      if (!owner) return res.status(404).json({ status: false, error: 'User not found' });
+      if (!owner) {
+        return res.status(404)
+          .json({ status: false, error: 'User not found' });
+      }
 
       const room = await createRoom({
         title: titleRoom,
@@ -279,18 +294,18 @@ class RoomController implements IControllerBase {
         stateRoom: CallState.Wait,
       });
 
-      return res.status(201).json({ status: true, room });
-    } catch (error) { return res.status(400).json({ status: false, error: error.message }); }
+      return res.status(201)
+        .json({ status: true, room });
+    } catch (error) {
+      return res.status(400)
+        .json({ status: false, error: error.message });
+    }
   };
 
   static listRooms = async (
     req: Request,
     res: Response,
   ) => res.status(200).json({ status: true, error: 'test' });
-    // const { userId } = req;
-    // if (!userId) res.sendStatus(400);
-    /* let list;
-    try { list = await Room.find(); } catch (err) { console.log(err); } */
 
   static checkRoom = async (
     req: Request & { userId: string },
@@ -298,14 +313,23 @@ class RoomController implements IControllerBase {
   ) => {
     const roomId = req.params.id;
 
-    if (!roomId) return res.status(404).json({ status: false, error: 'room not found' });
+    if (!roomId) {
+      return res.status(404)
+        .json({ status: false, error: 'room not found' });
+    }
 
     try {
       const room = await checkRoom(roomId, req.userId);
-      if (!room) return res.status(404).json({ status: false, error: 'room not found or you no member her' });
-      return res.status(200).json({ status: true, room });
+      if (!room) {
+        return res.status(404)
+          .json({ status: false, error: 'room not found or you no member her' });
+      }
+
+      return res.status(200)
+        .json({ status: true, room });
     } catch (error) {
-      return res.status(404).json({ status: false, message: error.message });
+      return res.status(404)
+        .json({ status: false, message: error.message });
     }
   };
 
@@ -315,17 +339,28 @@ class RoomController implements IControllerBase {
   ) => {
     const roomId = req.params.room_id || req.params.id;
 
-    if (!roomId) return res.status(404).json({ status: false, error: 'Room not found' });
+    if (!roomId) {
+      return res.status(404)
+        .json({ status: false, error: 'Room not found' });
+    }
     try {
       const user = await getUser(req.userId);
-      if (!user) return res.status(404).json({ status: false, error: 'user not found' });
+      if (!user) {
+        return res.status(404)
+          .json({ status: false, error: 'user not found' });
+      }
 
       const result = await leaveRoom(roomId, user.id);
-      if (!result) return res.status(404).json({ status: false, error: 'Room not found' });
+      if (!result) {
+        return res.status(404)
+          .json({ status: false, error: 'Room not found' });
+      }
 
-      return res.status(200).json(result);
+      return res.status(200)
+        .json(result);
     } catch (error) {
-      return res.status(500).json({ status: false, error: error.message });
+      return res.status(500)
+        .json({ status: false, error: error.message });
     }
   };
 }

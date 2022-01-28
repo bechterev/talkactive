@@ -2,9 +2,8 @@ import express, { Application } from 'express';
 import mongoose from 'mongoose';
 import { createServer, Server } from 'http';
 import * as swaggerUI from 'swagger-ui-express';
-import swaggerSpec from './controllers/swagger_spec';
+import swaggerSpec from './swaggerspec';
 import cronos from './services/cronos';
-// import task from './services/task.update.queue';
 
 class App {
   public app: Application;
@@ -30,7 +29,6 @@ class App {
     this.assets();
     this.server = createServer(this.app);
     cronos();
-    // task();
   }
 
   private dbConnect() {

@@ -4,11 +4,14 @@ import Device from '../data/device/schema';
 const upsertToken = async (token, type, userId) => {
   try {
     const matchToken = await Device.findOne({ token });
-    console.log(matchToken, 'yes', token, type);
+
     if (matchToken) {
       matchToken.user_id = userId;
+
       matchToken.type = type;
+
       await matchToken.save();
+
       return { token: matchToken, error: undefined };
     }
 
@@ -22,14 +25,16 @@ const upsertToken = async (token, type, userId) => {
 
 const unregisterToken = async (token: string) => {
   const deleteToken = await Device.deleteOne({ token });
+
   if (deleteToken.deletedCount === 0) throw new Error('not found token');
 
   return true;
 };
 
 const getTokens = async (users: Array<string>) => {
-  const token = await Device.find({}).where({ user_id: { $in: users } });
-  return token;
+  const tokens = await Device.find({}).where({ user_id: { $in: users } });
+
+  return tokens;
 };
 
 export { upsertToken, unregisterToken, getTokens };

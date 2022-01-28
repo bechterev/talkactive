@@ -2,5 +2,5 @@ node_modules
 .env
 .vscode/
 dist/
-talktest-7623b-firebase-adminsdk-eugsc-2893517b70.json
+account-data.json
 google-services.json

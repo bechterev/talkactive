@@ -110,13 +110,16 @@ class AuthController implements IControllerBase {
 
     if (!email || !password) {
       return res.status(400)
-        .json({ status: 'false', error: 'Email or password are requred' });
+        .json({ status: false, error: 'Email or password are requred' });
     }
 
     try {
       const duplicate = await User.findOne({ email }).exec();
 
-      if (duplicate) return res.status(409).json({ status: false, error: 'duplicate email' });
+      if (duplicate) {
+        return res.status(409)
+          .json({ status: false, error: 'duplicate email' });
+      }
 
       const hashPWD = await bcrypt.hash(
         password,
@@ -127,7 +130,8 @@ class AuthController implements IControllerBase {
       return res.status(201)
         .json({ status: true, token: await generateToken(req.sessionID, user.id) });
     } catch (error) {
-      return res.status(500).json({ status: false, error: error.message });
+      return res.status(500)
+        .json({ status: false, error: error.message });
     }
   };
 
@@ -136,7 +140,7 @@ class AuthController implements IControllerBase {
 
     if (!email || !password) {
       return res.status(400)
-        .json({ status: 'false', error: 'Email or password are requred' });
+        .json({ status: false, error: 'Email or password are requred' });
     }
     try {
       const user = await User.findOne({ email });
@@ -154,8 +158,12 @@ class AuthController implements IControllerBase {
           .json({ status: true, token: await generateToken(req.sessionID, user.id) });
       }
 
-      return res.status(404).json({ status: false, error: 'user not found' });
-    } catch (error) { return res.status(500).json({ status: false, error: error.message }); }
+      return res.status(404)
+        .json({ status: false, error: 'user not found' });
+    } catch (error) {
+      return res.status(500)
+        .json({ status: false, error: error.message });
+    }
   };
 
   static logout = async (req: Request, res: Response) => {
@@ -165,11 +173,17 @@ class AuthController implements IControllerBase {
       if (tokens) {
         const listTokenUpdate = tokens.map((el) => el.id);
         await Token.updateMany({ _id: { $in: listTokenUpdate } }, { revoke: <any>true });
-        return res.status(200).json({ status: true });
+
+        return res.status(200)
+          .json({ status: true });
       }
 
-      return res.status(200).json({ status: true });
-    } catch (error) { return res.status(500).json({ status: false, error: error.message }); }
+      return res.status(200)
+        .json({ status: true });
+    } catch (error) {
+      return res.status(500)
+        .json({ status: false, error: error.message });
+    }
   };
 }
 

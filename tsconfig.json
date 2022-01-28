@@ -1,6 +1,6 @@
 {
   "include": ["src/**/*", "dist/server.js", "dist/interfaces/base.js", "dist/data/room/interface.js", 
-    "dist/data/room/interface.js", "dist/controllers/auth.js", "__test__/room.test.ts"],
+    "dist/data/room/interface.js", "dist/controllers/auth.js"],
     "compilerOptions": {
       "esModuleInterop": true,
       "target": "es5",
@@ -9,8 +9,6 @@
     },
     "exclude": [
       "node_modules",
-      "**/*.spec.ts",
-      "**/*.spec.tsx",
       "**/*.test.ts",
       "**/*.test.tsx",
   ]

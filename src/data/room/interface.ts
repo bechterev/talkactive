@@ -6,5 +6,6 @@ export interface IRoom extends Document {
   owner?: ObjectId;
   expire_at: Date;
   members: Array<String>;
+  members_leave: Array<String>;
   stateRoom: CallState;
 }

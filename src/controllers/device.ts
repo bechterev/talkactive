@@ -82,19 +82,36 @@ export default class DeviceController implements IControllerBase {
 
   static register = async (req: Request & { userId: string }, res: Response) => {
     const { token, type } = req.body;
-    if (!token || !type) return res.status(404).json({ status: false, error: 'token not found' });
+    if (!token || !type) {
+      return res.status(404)
+        .json({ status: false, error: 'token not found' });
+    }
     const tokendb = await upsertToken(token, type, req.userId);
 
-    if (tokendb.error) return res.status(500).json({ status: false, error: tokendb.error });
-    return res.status(200).json({ status: true });
+    if (tokendb.error) {
+      return res.status(500)
+        .json({ status: false, error: tokendb.error });
+    }
+    return res.status(200)
+      .json({ status: true });
   };
 
   static unregister = async (req: Request, res: Response) => {
     const { token } = req.body;
-    if (!token) return res.status(404).json({ status: false, error: 'token not found' });
+
+    if (!token) {
+      return res.status(404)
+        .json({ status: false, error: 'token not found' });
+    }
+
     try {
       await unregisterToken(token);
-      return res.status(200).json({ status: true });
-    } catch (err) { return res.status(500).json({ status: false, error: err.message }); }
+
+      return res.status(200)
+        .json({ status: true });
+    } catch (err) {
+      return res.status(500)
+        .json({ status: false, error: err.message });
+    }
   };
 }
