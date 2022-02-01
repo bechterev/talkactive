@@ -2,10 +2,10 @@ import admin from 'firebase-admin';
 import { getTokens } from './device';
 import rtc from '../rtc/agora';
 
-const serviceAccount = require('../../account-data.json');
+const serviceAccount = require('../../firebase-service-account.json');
 
 admin.initializeApp({
-  projectId: process.env.projectId,
+  projectId: process.env.FIREBASE_PROJECT_ID,
   credential: admin.credential.cert(serviceAccount),
 });
 
@@ -39,17 +39,20 @@ const generateFCMMessage = (
 };
 
 const notifyWork = async (users, roomId) => {
+  console.log(users);
   const tokens = await getTokens(users);
 
   const messages = [];
 
-  const agoraToken = await rtc(roomId);
+  const agoraTokens = await Promise.all(tokens.map((token) => rtc(roomId, token.user_id)));
 
-  tokens.forEach((token) => {
+  console.log(agoraTokens);
+
+  tokens.forEach((token, index) => {
     const payload = {
       action: 'room_started',
       room_id: roomId,
-      agoraToken: agoraToken.token,
+      agoraToken: agoraTokens[index].token,
     };
 
     const message = generateFCMMessage(
@@ -62,13 +65,15 @@ const notifyWork = async (users, roomId) => {
     messages.push(message);
   });
 
+  if (messages.length === 0) throw new Error('tokens not found');
+
   const result = await admin.messaging().sendAll(messages);
 
   return result;
 };
 
 const notifyFinish = async (room) => {
-  const tokens = await getTokens(room.members_leave);
+  const tokens = await getTokens(room.members);
 
   const messages = [];
 
@@ -87,6 +92,8 @@ const notifyFinish = async (room) => {
 
     messages.push(message);
   });
+
+  if (messages.length === 0) throw new Error('tokens not found');
 
   const result = await admin.messaging().sendAll(messages);
 

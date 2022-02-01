@@ -6,7 +6,7 @@ const deviceSchema: Schema = new Schema<IDevice>(
   {
     user_id: { type: Schema.Types.ObjectId },
     token: { required: true, type: String },
-    type: { type: String, enum: Object.values(OS) },
+    type: { type: String, enum: Object.values(OS), required: true },
   },
   { timestamps: true },
 );

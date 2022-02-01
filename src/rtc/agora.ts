@@ -1,22 +1,22 @@
 import Agora from 'agora-access-token';
 
-const rtc = async (room: string) => {
-  const appID = process.env.APP_ID;
-  const appCertificate = process.env.APP_CERT;
+const rtc = async (room: string, userId: string) => {
+  const appID = process.env.AGORA_APP_ID;
+  const appCertificate = process.env.AGORA_APP_CERT;
   const expirationTimeInSeconds = 3600;
-  const uid = 0;
+  const userAccount = userId;
   const role = Agora.RtcRole.PUBLISHER;
   const channel = room;
   const currentTimestamp = Math.floor(Date.now() / 1000);
   const expirationTimestamp = currentTimestamp + expirationTimeInSeconds;
-  const token = Agora.RtcTokenBuilder.buildTokenWithUid(
+  const token = Agora.RtcTokenBuilder.buildTokenWithAccount(
     appID,
     appCertificate,
     channel,
-    uid,
+    userAccount,
     role,
     expirationTimestamp,
   );
-  return { uid, token };
+  return { userAccount, token };
 };
 export default rtc;

@@ -11,7 +11,74 @@ class UserController implements IControllerBase {
   }
 
   initRoutes() {
+    /**
+ * @swagger
+ * /api/v1/user/change_pass:
+ *  post:
+ *    summary: Change password
+ *    tags:
+ *      - User
+ *    responses:
+ *      404:
+ *        description: user not found
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/statusError'
+ *      409:
+ *        description: password conflict
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/statusError'
+ *      200:
+ *        description: User change password
+ *        content:
+ *          application/json:
+ *            schema:
+ *              type: object
+ *              properties:
+ *                contribution:
+ *                  $ref: "#/components/schemas/User"
+ *      500:
+ *        description: unexpected error
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/statusError'
+ */
     this.router.post('/user/change_pass', UserController.changePWD);
+
+    /**
+ * @swagger
+ * /api/v1/user/add_new_mask:
+ *  post:
+ *    summary: Change properties
+ *    tags:
+ *      - User
+ *    responses:
+ *      404:
+ *        description: user not found
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/statusError'
+ *      200:
+ *        description: User change password
+ *        content:
+ *          application/json:
+ *            schema:
+ *              type: object
+ *              properties:
+ *                contribution:
+ *                  $ref: "#/components/schemas/User"
+ *      500:
+ *        description: unexpected error
+ *        content:
+ *          application/json:
+ *            schema:
+ *              $ref: '#/components/schemas/statusError'
+ */
     this.router.post('/user/add_new_mask', UserController.addNewMask);
   }
 

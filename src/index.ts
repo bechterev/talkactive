@@ -2,7 +2,7 @@ import express, { Application } from 'express';
 import mongoose from 'mongoose';
 import { createServer, Server } from 'http';
 import * as swaggerUI from 'swagger-ui-express';
-import swaggerSpec from './swaggerspec';
+import swaggerSpec from './swagger_spec';
 import cronos from './services/cronos';
 
 class App {

@@ -12,29 +12,37 @@ class RefreshTokenController implements IControllerBase {
     this.initRoutes();
   }
 
-  /**
-   * @swagger
-   * /api/v1/refresh:
-   *  post:
-   *    summary: Create a JSON
-   *    responses:
-   *      description: Authenticate user success
-   *      content:
-   *        application/jwt:
-   *          schema:
-   *            type: string
-   *      200:
-   *      headers:
-   *        Set-Cookie:
-   *          schema:
-   *            type: string
-   *            example: JWT=abcde12345sadasdasdqwe3423e3=; Path=/; HttpOnly
-   *      401:
-   *        description: Cookie auth not correct, try again
-   *      403:
-   *        description: User not found
-   */
   initRoutes() {
+    /**
+     * @swagger
+     * /api/v1/refresh:
+     *  post:
+     *    summary: User refresh token
+     *    tags:
+     *      - Refresh
+     *    requestBody:
+     *      required: true
+     *      content:
+     *        application/json:
+     *          schema:
+     *            type: object
+     *            properties:
+     *              token:
+     *                type: string
+     *    responses:
+     *      200:
+     *        description: Token refresh
+     *        content:
+     *            application/json:
+     *              schema:
+     *                $ref: '#/components/schemas/statusOk'
+     *      401:
+     *        description: Email or password not correct, try again
+     *        content:
+     *          application/json:
+     *            schema:
+     *              $ref: '#/components/schemas/statusError'
+     */
     this.router.post('/refresh', RefreshTokenController.refresh);
   }
 

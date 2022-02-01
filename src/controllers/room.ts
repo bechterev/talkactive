@@ -16,195 +16,237 @@ class RoomController implements IControllerBase {
   }
 
   initRoutes() {
+  /**
+     * @swagger
+     * components:
+     *   schemas:
+     *     User:
+     *       type: object
+     *       properties:
+     *         id:
+     *           type: string
+     *           example: "5fdedb7c25ab1352eef88f60"
+     *         login:
+     *           type: string
+     *           example: testName
+     *         password:
+     *           type: string
+     *           example: suPPer.Pass11ord
+     *         email:
+     *           type: string
+     *           example: test@test.com
+     *         mask:
+     *           type: array
+     *           items:
+     *             type: string
+     *             example: lion
+     *         rating:
+     *           type: integer
+     *           example: 11
+     *         token:
+     *           type: string
+     *           example: sjidoij0239ip32j32ro9eif-32i4pr32o4j32i0-023
+     *     Room:
+     *       type: object
+     *       properties:
+     *         id:
+     *           type: string
+     *           example: "5fdedb7c25ab1352eef88f60"
+     *         title:
+     *           type: string
+     *         owner:
+     *           type: string
+     *         members:
+     *           type: Array
+     *           items:
+     *             type: string
+     *         expire_at:
+     *           type: string
+     *           format: date
+     *         stateRoom:
+     *           type: string
+     */
+
     /**
      * @swagger
      * /room/join/{room_id}:
      *  post:
      *    summary: User join concrete room
+     *    tags:
+     *      - Room
      *    parameters:
-     *      - in: path
-     *      name: room_id
-     *      required: true
-     *      schema:
-     *        type: string
+     *      roomParam:
+     *        name: room_id
+     *        in: path
+     *        required: true
+     *        schema:
+     *          type: string
      *    responses:
      *      200:
      *        description: user add room
      *        content:
      *          application/json:
      *            schema:
-     *              $ref: '#/components/Schemas/Room'
+     *              $ref: '#/components/schemas/Room'
      *      400:
      *        description: user or email not exist
+     *        content:
+     *          application/json:
+     *            schema:
+     *              $ref: '#/components/schemas/statusError'
      */
     this.router.post('/room/join/:room_id', RoomController.joinRoom);
+
     /**
      * @swagger
      * /room/join:
      *  post:
      *    summary: the user has been added to the queue to wait for a room
+     *    tags:
+     *      - Room
      *    responses:
      *      201:
      *        description: count list wait users
      *        content:
      *          application/json:
      *            schema:
-     *              $ref: '#/components/Schemas/Room'
+     *              $ref: '#/components/schemas/Room'
      *      500:
      *        description: an unexpected error
+     *        content:
+     *          application/json:
+     *            schema:
+     *              $ref: '#/components/schemas/statusError'
      *      404:
      *        description: user not found
+     *        content:
+     *          application/json:
+     *            schema:
+     *              $ref: '#/components/schemas/statusError'
      */
     this.router.post('/room/join/', RoomController.joinAnyRoom);
+
     /**
      * @swagger
      * /room/{id}:
      *  get:
      *    summary: get status of a room
+     *    tags:
+     *      - Room
      *    parameters:
-     *      - in: path
-     *      name: id
-     *      required: true
-     *      schema:
-     *        type: string
-     *    responses:
+     *      roomParam:
+     *        name: id
+     *        in: path
+     *        required: true
+     *        schema:
+     *          type: string
      *      200:
      *        description: return a room to a member of this room
      *        content:
      *          application/json:
      *            schema:
-     *              $ref: '#/components/Schemas/Room'
+     *              $ref: '#/components/schemas/Room'
      *      404:
      *        description: room not found
+     *        content:
+     *          application/json:
+     *            schema:
+     *              $ref: '#/components/schemas/statusError'
      */
     this.router.get('/room/:id', RoomController.checkRoom);
+
     /**
      * @swagger
      * /room/leave/{id}:
      *  post:
      *    summary: leave room
+     *    tags:
+     *      - Room
      *    parameters:
-     *      - in: path
-     *      name: id
-     *      required: true
-     *      schema:
-     *        type: string
+     *      roomParam:
+     *        name: id
+     *        in: path
+     *        required: true
+     *        schema:
+     *          type: string
      *    responses:
      *      200:
      *        description: return a room to a member of this room
      *        content:
      *          application/json:
      *            schema:
-     *              $ref: '#/components/Schemas/Room'
+     *              $ref: '#/components/schemas/Room'
      *      404:
      *        description: room not found
+     *        content:
+     *          application/json:
+     *            schema:
+     *              $ref: '#/components/schemas/statusError'
      *      500:
      *        description: an unexpected mistake
+     *        content:
+     *          application/json:
+     *            schema:
+     *              $ref: '#/components/schemas/statusError'
      */
     this.router.post('/room/leave/:id', RoomController.leaveRoom);
+
     /**
      * @swagger
      * /room/create:
      *  post:
      *    summary: Create room
+     *    tags:
+     *      - Room
      *    parameters:
-     *      - in: path
-     *      name: id
-     *      required: true
-     *      schema:
-     *        type: string
+     *      roomParam:
+     *        name: id
+     *        in: path
+     *        required: true
+     *        schema:
+     *          type: string
      *    responses:
      *      201:
      *        description: created room
      *        content:
      *          application/json:
      *            schema:
-     *              $ref: '#/components/Schemas/Room'
+     *              $ref: '#/components/schemas/Room'
      *      404:
      *        description: not found room
      *        content:
      *          application/json:
      *            schema:
-     *              type: object
-     *              properties:
-     *                message:
-     *                  type: string
+     *              $ref: '#/components/schemas/statusError'
      *      500:
      *        description: an unexpected mistake
      *        content:
      *          application/json:
      *            schema:
-     *              type: object
-     *              properties:
-     *                message:
-     *                  type: string
+     *              $ref: '#/components/schemas/statusError'
      */
     this.router.post('/room/create', RoomController.createRoom);
+
     /**
      * @swagger
      * /room/list:
      *  get:
      *    summary: List rooms
+     *    tags:
+     *      - Room
      *    responses:
      *      200:
      *        description: get list room
      *        content:
      *          application/json:
      *            schema:
-     *              type: array
-     *              items:
-     *                type: Object
-     *                example:
-     *                  $ref: '#/components/schemas/User'
+     *              $ref: '#/components/schemas/User'
      *      400:
      *        description: email not found
-     * components:
-     *  schemas:
-     *    User:
-     *      type: object
-     *      properties:
-     *        id:
-     *          type: string
-     *          example: "5fdedb7c25ab1352eef88f60"
-     *        login:
-     *          type: string
-     *          example: testName
-     *        password:
-     *          type: string
-     *          example: suPPer.Pass11ord
-     *        email:
-     *          type: string
-     *          example: test@test.com
-     *        mask:
-     *          type: array
-     *          items:
-     *            type: string
-     *            example: lion
-     *        rating:
-     *          type: integer
-     *          example: 11
-     *        token:
-     *          type: string
-     *          example: sjidoij0239ip32j32ro9eif-32i4pr32o4j32i0-023
-     *    Room:
-     *      type: object
-     *      properties:
-     *        id:
-     *          type: string
-     *          example: "5fdedb7c25ab1352eef88f60"
-     *        title:
-     *          type: string
-     *        owner:
-     *          type: string
-     *        members:
-     *          type: Array
-     *          items:
-     *            type: string
-     *        expire_at:
-     *          type: string
-     *          format: date
-     *        stateRoom:
-     *          type: string
+     *        content:
+     *          application/json:
+     *            schema:
+     *              $ref: '#/components/schemas/statusError'
      */
     this.router.get('/room/list', RoomController.listRooms);
   }
@@ -259,7 +301,7 @@ class RoomController implements IControllerBase {
       }
 
       return res.status(201)
-        .json({ status: true, room: freeRooms.rooms });
+        .json({ status: true, room: freeRooms.room });
     } catch (error) {
       return res.status(500)
         .json({ status: false, error: error.message });

@@ -9,40 +9,61 @@ export default class DeviceController implements IControllerBase {
     this.initRoutes();
   }
 
+  /**
+ * @swagger
+ * components:
+ *   schemas:
+ *     statusOk:
+ *       type: object
+ *       properties:
+ *         status:
+ *           type: boolean
+ *     statusError:
+ *       type: object
+ *       properties:
+ *         status:
+ *           type: boolean
+ *         error:
+ *           type: string
+ */
   initRoutes() {
   /**
    * @swagger
    * /api/v1/device/register:
    *  post:
    *    summary: Upsert token device
+   *    tags:
+   *      - Device
    *    requestBody:
    *      required: true
-   *        content:
-   *          application/json:
-   *            schema:
-   *              type: object
-   *              properties:
-   *                token:
-   *                  type: string
-   *                type:
-   *                  type: string
-   *    responses:
-   *      description: token insert or update
    *      content:
    *        application/json:
    *          schema:
    *            type: object
    *            properties:
-   *              status:
-   *                type: boolean
-   *              error:
+   *              token:
    *                type: string
+   *              type:
+   *                  type: string
+   *    responses:
    *      200:
    *        description: return status OK
+   *        content:
+   *          application/json:
+   *            schema:
+   *              $ref: '#/components/schemas/statusOk'
    *      404:
    *        description: token not found
+   *        content:
+   *          application/json:
+   *            schema:
+   *              $ref: '#/components/schemas/statusError'
    *      500:
    *        description: unexpected error
+   *        content:
+   *          application/json:
+   *            schema:
+   *              $ref: '#/components/schemas/statusError'
    */
     this.router.post('/device/register', DeviceController.register);
 
@@ -51,31 +72,36 @@ export default class DeviceController implements IControllerBase {
    * /api/v1/device/unregister:
    *  post:
    *    summary: delete token device
+   *    tags:
+   *      - Device
    *    requestBody:
    *      required: true
-   *        content:
-   *          application/json:
-   *            schema:
-   *              type: object
-   *              properties:
-   *                token:
-   *                  type: string
-   *    responses:
    *      content:
    *        application/json:
    *          schema:
    *            type: object
    *            properties:
-   *              status:
-   *                type: boolean
-   *              error:
+   *              token:
    *                type: string
+   *    responses:
    *      200:
    *        description: return status OK
+   *        content:
+   *          application/json:
+   *            schema:
+   *              $ref: '#/components/schemas/statusOk'
    *      404:
    *        description: token not found
+   *        content:
+   *          application/json:
+   *            schema:
+   *              $ref: '#/components/schemas/statusError'
    *      500:
    *        description: unexpected error
+   *        content:
+   *          application/json:
+   *            schema:
+   *              $ref: '#/components/schemas/statusError'
    */
     this.router.post('/device/unregister', DeviceController.unregister);
   }
@@ -86,6 +112,7 @@ export default class DeviceController implements IControllerBase {
       return res.status(404)
         .json({ status: false, error: 'token not found' });
     }
+    console.log(token, type);
     const tokendb = await upsertToken(token, type, req.userId);
 
     if (tokendb.error) {

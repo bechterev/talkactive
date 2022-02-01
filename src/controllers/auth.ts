@@ -18,6 +18,8 @@ class AuthController implements IControllerBase {
      * /api/v1/signup:
      *  post:
      *    summary: Create a JSONPlaceholder user
+     *    tags:
+     *      - Registration
      *    requestBody:
      *      required: true
      *      content:
@@ -45,17 +47,32 @@ class AuthController implements IControllerBase {
      *                  type: string
      *      400:
      *        description: The required data is missing
+     *        content:
+     *          application/json:
+     *            schema:
+     *              $ref: '#/components/schemas/statusError'
      *      409:
      *        description: Data is not uniq
+     *        content:
+     *          application/json:
+     *            schema:
+     *              $ref: '#/components/schemas/statusError'
      *      500:
      *        description: Internal error
+     *        content:
+     *          application/json:
+     *            schema:
+     *              $ref: '#/components/schemas/statusError'
      */
     this.router.post('/signup', AuthController.signup);
+
     /**
      * @swagger
      * /api/v1/signin:
      *  post:
      *    summary: Authenticate user
+     *    tags:
+     *      - Login
      *    requestBody:
      *      required: true
      *      content:
@@ -81,26 +98,39 @@ class AuthController implements IControllerBase {
      *                    type: string
      *      400:
      *        description: The required data is missing
+     *        content:
+     *          application/json:
+     *            schema:
+     *              $ref: '#/components/schemas/statusError'
      *      401:
      *        description: Email or password not correct, try again
      *        content:
-     *            application/json:
-     *              schema:
-     *                type: object
-     *                properties:
-     *                  message: string
+     *          application/json:
+     *            schema:
+     *              $ref: '#/components/schemas/statusError'
      */
     this.router.post('/signin', AuthController.signin);
+
     /**
      * @swagger
      * /api/v1/logout:
      *  get:
      *    summary: Log out user
+     *    tags:
+     *      - Logout
      *    responses:
-     *      204:
-     *        description: Clear jwt
      *      200:
-     *        description: Clear jwt
+     *        description: return status OK
+     *        content:
+     *          application/json:
+     *            schema:
+     *              $ref: '#/components/schemas/statusOk'
+     *      500:
+     *        description: unexpected error
+     *        content:
+     *          application/json:
+     *            schema:
+     *              $ref: '#/components/schemas/statusError'
      */
     this.router.get('/logout', AuthController.logout);
   }
@@ -168,15 +198,10 @@ class AuthController implements IControllerBase {
 
   static logout = async (req: Request, res: Response) => {
     try {
-      const tokens = await Token.find({}).where({ revoke: false, session_id: req.sessionID });
-
-      if (tokens) {
-        const listTokenUpdate = tokens.map((el) => el.id);
-        await Token.updateMany({ _id: { $in: listTokenUpdate } }, { revoke: <any>true });
-
-        return res.status(200)
-          .json({ status: true });
-      }
+      await Token.updateMany(
+        { revoke: false, session_id: req.sessionID },
+        { revoke: <any>true },
+      );
 
       return res.status(200)
         .json({ status: true });

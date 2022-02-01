@@ -9,10 +9,10 @@ async function generateToken(session_id, userId) {
     });
 
     const refreshToken = jwt.sign({ userId }, process.env.REFRESH_TOKEN_SECRET, {
-      expiresIn: `${process.env.REFRESH_TOKEN_LIVE}h`,
+      expiresIn: `${process.env.REFRESH_TOKEN_LIVE}m`,
     });
 
-    const maxAgeRefresh = 1000 * 60 * 60 * Number(process.env.REFRESH_TOKEN_LIVE);
+    const maxAgeRefresh = 1000 * 60 * Number(process.env.REFRESH_TOKEN_LIVE);
 
     const maxAgeAccess = 1000 * 60 * Number(process.env.ACCESS_TOKEN_LIVE);
 

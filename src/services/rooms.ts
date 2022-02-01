@@ -31,13 +31,22 @@ const addUserFromRoom = async (
 ) => {
   try {
     const room = await Room.findOne({ _id: roomId });
+
     if (room.members.length === 3) return false;
 
     if (room.members.includes(user.id)) return room;
 
     room.members.push(user.id);
 
-    room.stateRoom = callStateArray[room.members.length];
+    if (room.members.length === 2) room.stateRoom = CallState.Wait;
+
+    if (room.members.length < 2) room.stateRoom = CallState.Init;
+
+    if (room.members.length === 3) {
+      room.stateRoom = CallState.Work;
+
+      await notifyWork(room.members, room.id);
+    }
 
     if (room.stateRoom !== CallState.Work) room.expire_at = addMinutes(new Date(), 5);
 
@@ -73,40 +82,36 @@ const createRoom = async (data: Partial<IRoom>, availableFreeRoom?: boolean) => 
   }
 };
 
-const getFreeRoom = async (userId?: string) => {
+const getFreeRoom = async (userId: string) => {
   try {
-    let rooms = await Room.find({
+    const room = await Room.findOne({
       expire_at: { $gt: new Date() },
       $or: [{ stateRoom: CallState.Init }, { stateRoom: CallState.Wait }],
     });
+    if (room) {
+      const waitRoom = room.members.some((el) => el === userId);
 
-    if (!userId) return { rooms, newRoom: false, error: false };
+      if (waitRoom) return { room: waitRoom, newRoom: false, error: false };
 
-    if (rooms.length === 0) {
-      const newRoomParams = userId ? { members: [userId] } : {};
+      room.members.push(userId);
 
-      rooms = [await createRoom(newRoomParams, true)];
+      if (room.members.length === 3) {
+        room.stateRoom = CallState.Work;
 
-      return { rooms, newRoom: true, error: false };
+        await notifyWork(room.members, room.id);
+      }
+
+      room.expire_at = addMinutes(new Date(), 5);
+
+      await room.save();
+
+      return { rooms: room, newRoom: false, error: false };
     }
+    const newRoomParams = userId ? { members: [userId] } : {};
 
-    const waitRoom = rooms.find((room) => room.members.some((el) => el === userId));
+    const newRoom = await createRoom(newRoomParams, true);
 
-    if (waitRoom) return { rooms: waitRoom, newRoom: false, error: false };
-
-    rooms[0].members.push(userId);
-
-    if (rooms[0].members.length === 3) {
-      rooms[0].stateRoom = CallState.Work;
-
-      await notifyWork(rooms[0].members, rooms[0].id);
-    }
-
-    rooms[0].expire_at = addMinutes(new Date(), 5);
-
-    await rooms[0].save();
-
-    return { rooms: rooms[0], newRoom: false, error: false };
+    return { room: newRoom, newRoom: true, error: false };
   } catch (error) {
     return {
       rooms: undefined,
@@ -130,9 +135,11 @@ const leaveRoom = async (roomId: string, user_id: string) => {
   room.members_leave.push(leaveUser[0]);
 
   if (room.stateRoom === CallState.Work && room.members.length === 0) {
-    await notifyFinish(room);
+    try {
+      await notifyFinish(room);
 
-    room.stateRoom = CallState.Finish;
+      room.stateRoom = CallState.Finish;
+    } catch (e) { return { status: false, error: e.message }; }
   } else if (room.stateRoom === CallState.Wait && room.members.length === 1) {
     room.stateRoom = CallState.Init;
   } else if (room.stateRoom === CallState.Init && room.members.length === 0) {

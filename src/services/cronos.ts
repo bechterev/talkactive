@@ -8,13 +8,18 @@ const defaultTask = async () => {
     expire_at: { $lt: new Date() },
     $or: [{ stateRoom: CallState.Init }, { stateRoom: CallState.Wait }],
   });
+
+  const listIds = [];
+
+  closeRooms.map((el) => listIds.push(el._id));
+
   await Room.updateMany(
     {
-      expire_at: { $lt: new Date() },
-      $or: [{ stateRoom: CallState.Init }, { stateRoom: CallState.Wait }],
+      _id: { $in: listIds },
     },
     { stateRoom: CallState.Timeout },
   );
+
   if (closeRooms.length > 0) {
     await Promise.all(closeRooms.map((room) => notifyFinish(room)));
   }

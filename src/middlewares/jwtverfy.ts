@@ -6,6 +6,7 @@ const verifyJWT = (req: Request & { userId: string }, res: Response, next) => {
   if (
     req.path === `${process.env.BASE_PREFIX}signup`
     || req.path === `${process.env.BASE_PREFIX}signin`
+    || req.path === `${process.env.BASE_PREFIX}device/unregister`
   ) {
     next();
   } else {
