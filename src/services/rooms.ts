@@ -94,9 +94,9 @@ const getFreeRoom = async (userId: string) => {
     });
 
     if (room) {
-      const waitRoom = room.members.some((el) => el === userId);
+      const presenseUserInRoom = room.members.some((el) => el === userId);
 
-      if (waitRoom) return { room: waitRoom, newRoom: false, error: false };
+      if (presenseUserInRoom) return { room, newRoom: false, error: false };
 
       room.members.push(userId);
 

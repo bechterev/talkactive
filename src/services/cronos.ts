@@ -29,7 +29,7 @@ class Clocker {
   cronJob : CronJob;
 
   constructor(task:any = defaultTask) {
-    this.cronJob = new CronJob('*/10 * * * * *', async () => {
+    this.cronJob = new CronJob('* * * * * *', async () => {
       try {
         await task();
       } catch (err) {
