@@ -39,20 +39,18 @@ const generateFCMMessage = (
 };
 
 const notifyWork = async (users, roomId) => {
-  console.log(users);
   const tokens = await getTokens(users);
 
   const messages = [];
 
   const agoraTokens = await Promise.all(tokens.map((token) => rtc(roomId, token.user_id)));
 
-  console.log(agoraTokens);
-
   tokens.forEach((token, index) => {
     const payload = {
       action: 'room_started',
       room_id: roomId,
       agoraToken: agoraTokens[index].token,
+      user_id: agoraTokens[index].userAccount,
     };
 
     const message = generateFCMMessage(
@@ -65,7 +63,7 @@ const notifyWork = async (users, roomId) => {
     messages.push(message);
   });
 
-  if (messages.length === 0) throw new Error('tokens not found');
+  if (messages.length === 0) return undefined;
 
   const result = await admin.messaging().sendAll(messages);
 

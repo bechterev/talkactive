@@ -1,6 +1,6 @@
 import { Request } from 'express';
 import { format, addMinutes } from 'date-fns';
-import { CallState, callStateArray } from '../interfaces/state_call';
+import { CallState } from '../interfaces/state_call';
 import Room from '../data/room/schema';
 import { IRoom } from '../data/room/interface';
 import { genTitle } from './util';
@@ -105,7 +105,7 @@ const getFreeRoom = async (userId: string) => {
 
       await room.save();
 
-      return { rooms: room, newRoom: false, error: false };
+      return { room, newRoom: false, error: false };
     }
     const newRoomParams = userId ? { members: [userId] } : {};
 
