@@ -38,6 +38,10 @@ const addUserFromRoom = async (
 
     room.members.push(user.id);
 
+    const indexLeaveUser = room.members_leave.indexOf(user.id);
+
+    if (indexLeaveUser !== -1) room.members_leave.splice(indexLeaveUser, 1);
+
     if (room.members.length === 2) room.stateRoom = CallState.Wait;
 
     if (room.members.length < 2) room.stateRoom = CallState.Init;
@@ -73,7 +77,7 @@ const createRoom = async (data: Partial<IRoom>, availableFreeRoom?: boolean) => 
       owner: data.owner,
       expire_at: format(addMinutes(new Date(), 5), 'MM.dd.yyyy HH:mm:ss'),
       members: data.members ? [data.members[0]] : [],
-      stateRoom: data.members ? CallState.Wait : CallState.Init,
+      stateRoom: data.members.length > 1 ? CallState.Wait : CallState.Init,
     });
 
     return result;
@@ -88,6 +92,7 @@ const getFreeRoom = async (userId: string) => {
       expire_at: { $gt: new Date() },
       $or: [{ stateRoom: CallState.Init }, { stateRoom: CallState.Wait }],
     });
+
     if (room) {
       const waitRoom = room.members.some((el) => el === userId);
 
@@ -95,12 +100,19 @@ const getFreeRoom = async (userId: string) => {
 
       room.members.push(userId);
 
+      const indexLeaveUser = room.members_leave.indexOf(userId);
+
+      if (indexLeaveUser !== -1) room.members_leave.splice(indexLeaveUser, 1);
+
       if (room.members.length === 3) {
         room.stateRoom = CallState.Work;
 
         await notifyWork(room.members, room.id);
       }
 
+      if (room.members.length === 2) {
+        room.stateRoom = CallState.Wait;
+      }
       room.expire_at = addMinutes(new Date(), 5);
 
       await room.save();
@@ -132,7 +144,9 @@ const leaveRoom = async (roomId: string, user_id: string) => {
 
   const leaveUser = room.members.splice(indexLeaveUser, 1);
 
-  room.members_leave.push(leaveUser[0]);
+  if (!room.members_leave.some((user) => user === leaveUser[0])) {
+    room.members_leave.push(leaveUser[0]);
+  }
 
   if (room.stateRoom === CallState.Work && room.members.length === 0) {
     try {

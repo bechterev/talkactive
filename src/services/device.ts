@@ -15,7 +15,7 @@ const upsertToken = async (token, type, userId) => {
       return { token: matchToken, error: undefined };
     }
 
-    const newToken = await Device.create({ token, type });
+    const newToken = await Device.create({ token, type, user_id: userId });
 
     return { token: newToken, error: undefined };
   } catch (err) {
