@@ -1,5 +1,4 @@
 import { Error } from 'mongoose';
-import OS from '../interfaces/os';
 import Device from '../data/device/schema';
 
 const upsertToken = async (token, type, userId) => {
@@ -15,7 +14,7 @@ const upsertToken = async (token, type, userId) => {
 
       return { token: matchToken, error: undefined };
     }
-    console.log(type, OS.Android, type === OS.Android);
+
     const newToken = await Device.create({ token, type });
 
     return { token: newToken, error: undefined };

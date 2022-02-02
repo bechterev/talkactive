@@ -112,7 +112,7 @@ export default class DeviceController implements IControllerBase {
       return res.status(404)
         .json({ status: false, error: 'token not found' });
     }
-    console.log(token, type);
+
     const tokendb = await upsertToken(token, type, req.userId);
 
     if (tokendb.error) {

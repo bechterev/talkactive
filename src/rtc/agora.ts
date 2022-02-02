@@ -17,6 +17,6 @@ const rtc = async (room: string, userId: string) => {
     role,
     expirationTimestamp,
   );
-  return { userAccount, token };
+  return { userAccount: userAccount.toString(), token };
 };
 export default rtc;
